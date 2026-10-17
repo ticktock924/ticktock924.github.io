@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>清单 / 预结算 AI 校对工具</title>
+<meta name="description" content="纯前端清单与预结算交叉核对工具：按项目名称匹配、比对数量偏差、标出缺失项与多余项。">
+<style>
+/* ==========================================================================
+   1. 设计变量（配色/间距统一在这里改）
+   ========================================================================== */
+:root{
+  --navy-900:#0d1f38;
+  --navy-700:#153253;
+  --navy-500:#2b5586;
+  --navy-300:#7c98b8;
+  --cream-50:#fbfaf6;
+  --cream-100:#f3f1ea;
+  --line:#e2dfd4;
+  --text:#22303f;
+  --muted:#5c6b7a;
+  --red:#b8352f;
+  --red-bg:#fdecea;
+  --green:#1f6b45;
+  --green-bg:#e9f4ee;
+  --amber:#9a6b13;
+  --amber-bg:#fdf4e2;
+  --font:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --radius:12px;
+  --maxw:1120px;
+}
+
+*,*::before,*::after{box-sizing:border-box;}
+body{
+  margin:0;font-family:var(--font);color:var(--text);background:var(--cream-50);
+  line-height:1.8;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0;font-weight:600;line-height:1.4;color:var(--navy-700);}
+p{margin:0;}
+ul{margin:0;padding:0;list-style:none;}
+button{font-family:inherit;cursor:pointer;}
+.wrap{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 20px;}
+
+/* ==========================================================================
+   2. 页头
+   ========================================================================== */
+.topbar{background:var(--navy-900);color:#cfd9e4;padding:44px 0 40px;}
+.topbar h1{color:#fff;font-size:clamp(23px,4.2vw,32px);}
+.topbar p{color:#9fb0c2;margin-top:10px;font-size:15px;max-width:62ch;}
+.badge{
+  display:inline-block;margin-bottom:14px;font-size:12px;letter-spacing:.12em;
+  color:#8fb6e0;border:1px solid rgba(143,182,224,.35);border-radius:999px;padding:3px 11px;
+}
+
+/* ==========================================================================
+   3. 区块通用
+   ========================================================================== */
+.section{padding:44px 0;}
+.section__title{font-size:20px;margin-bottom:6px;}
+.section__hint{color:var(--muted);font-size:14px;margin-bottom:18px;}
+.section__hint code{
+  background:var(--cream-100);border-radius:4px;padding:1px 6px;
+  font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:13px;color:var(--navy-700);
+}
+.divider{border-top:1px solid var(--line);}
+
+/* ==========================================================================
+   4. 输入区
+   ========================================================================== */
+.panel{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px;box-shadow:0 2px 10px rgba(13,31,56,.03);
+}
+.grid2{display:grid;gap:16px;grid-template-columns:1fr 1fr;}
+.field__label{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;}
+.field__label b{font-size:15px;color:var(--navy-700);}
+.field__label span{font-size:13px;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums;}
+.textarea{
+  width:100%;min-height:250px;resize:vertical;
+  font-family:ui-monospace,Consolas,"Courier New","PingFang SC",monospace;
+  font-size:14.5px;line-height:1.9;color:var(--text);
+  padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--cream-50);
+}
+.textarea:focus{outline:none;border-color:var(--navy-500);background:#fff;}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px;}
+.btn{
+  border:1px solid var(--line);background:#fff;color:var(--navy-700);
+  border-radius:9px;padding:9px 16px;font-size:14.5px;transition:.2s ease;
+}
+.btn:hover{border-color:var(--navy-300);background:var(--cream-100);}
+.btn--primary{background:var(--navy-700);border-color:var(--navy-700);color:#fff;font-size:16px;padding:11px 26px;}
+.btn--primary:hover{background:var(--navy-500);border-color:var(--navy-500);}
+.btn--ghost{border-style:dashed;color:var(--muted);}
+.spacer{flex:1;}
+
+/* 设置行 */
+.opts{
+  display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-top:14px;
+  padding:14px 16px;background:var(--cream-50);border:1px solid var(--line);border-radius:10px;
+}
+.opts label{font-size:14px;color:var(--navy-700);display:flex;align-items:center;gap:7px;cursor:pointer;}
+.opts input[type=number]{
+  width:78px;font:inherit;font-size:14px;padding:6px 9px;text-align:center;
+  border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);
+}
+.opts input[type=number]:focus{outline:none;border-color:var(--navy-500);}
+.opts input[type=checkbox]{width:16px;height:16px;accent-color:var(--navy-700);}
+.opts .tip{font-size:13px;color:var(--muted);}
+
+/* ==========================================================================
+   5. 统计卡片
+   ========================================================================== */
+.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+.stat{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;
+}
+.stat__num{font-size:27px;font-weight:700;color:var(--navy-700);line-height:1.2;font-variant-numeric:tabular-nums;}
+.stat__label{font-size:13px;color:var(--muted);margin-top:2px;}
+.stat--ok{border-color:rgba(31,107,69,.3);background:var(--green-bg);}
+.stat--ok .stat__num{color:var(--green);}
+.stat--warn{border-color:rgba(184,53,47,.35);background:var(--red-bg);}
+.stat--warn .stat__num{color:var(--red);}
+.stat--amber{border-color:rgba(154,107,19,.35);background:var(--amber-bg);}
+.stat--amber .stat__num{color:var(--amber);}
+
+/* ==========================================================================
+   6. 警示横幅
+   ========================================================================== */
+.alert{
+  border-radius:var(--radius);padding:16px 18px;margin-top:18px;font-size:15px;
+  display:flex;gap:12px;align-items:flex-start;
+}
+.alert__icon{flex:none;font-size:18px;line-height:1.5;}
+.alert--warn{background:var(--red-bg);border:1px solid rgba(184,53,47,.3);color:#8f2b26;}
+.alert--ok{background:var(--green-bg);border:1px solid rgba(31,107,69,.25);color:#1b5b3b;}
+.alert--info{background:var(--cream-100);border:1px solid var(--line);color:var(--muted);}
+.alert b{font-weight:600;}
+
+/* ==========================================================================
+   7. 筛选条
+   ========================================================================== */
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 12px;}
+.chipbtn{
+  border:1px solid var(--line);background:#fff;color:var(--muted);
+  border-radius:999px;padding:6px 14px;font-size:13.5px;transition:.18s ease;
+}
+.chipbtn:hover{border-color:var(--navy-300);color:var(--navy-700);}
+.chipbtn.is-active{background:var(--navy-700);border-color:var(--navy-700);color:#fff;}
+.chipbtn i{font-style:normal;opacity:.75;margin-left:5px;font-variant-numeric:tabular-nums;}
+
+/* ==========================================================================
+   8. 结果表格
+   ========================================================================== */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--radius);background:#fff;}
+table{width:100%;border-collapse:collapse;min-width:820px;font-size:14.5px;}
+thead th{
+  background:var(--cream-100);color:var(--navy-700);text-align:left;
+  font-weight:600;font-size:13px;letter-spacing:.06em;padding:12px 16px;
+  border-bottom:1px solid var(--line);white-space:nowrap;
+}
+tbody td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top;}
+tbody tr:last-child td{border-bottom:0;}
+tbody tr{break-inside:avoid;}
+.item-name{font-weight:600;color:var(--navy-700);}
+.item-name small{display:block;font-weight:400;font-size:12.5px;color:var(--navy-300);}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text);}
+.num b{font-weight:700;color:var(--navy-700);}
+.empty{color:var(--navy-300);font-size:13.5px;}
+.unit{color:var(--muted);font-size:12.5px;margin-left:3px;}
+.dev{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap;}
+.dev--up{color:var(--red);}
+.dev--down{color:var(--amber);}
+.dev--ok{color:var(--green);}
+.dev small{display:block;font-weight:400;font-size:12.5px;color:var(--muted);}
+.bar{height:6px;background:var(--cream-100);border-radius:3px;overflow:hidden;margin-top:7px;min-width:80px;}
+.bar__fill{height:100%;background:var(--red);border-radius:3px;}
+.bar__fill--down{background:var(--amber);}
+.status{
+  display:inline-block;border-radius:999px;padding:2px 11px;font-size:12.5px;
+  font-weight:600;white-space:nowrap;border:1px solid transparent;
+}
+.status--ok{background:var(--green-bg);color:#1b5b3b;border-color:rgba(31,107,69,.25);}
+.status--diff{background:var(--red-bg);color:#8f2b26;border-color:rgba(184,53,47,.3);}
+.status--missing{background:#fff;color:var(--red);border-color:rgba(184,53,47,.55);border-style:dashed;}
+.status--extra{background:var(--amber-bg);color:#8a6011;border-color:rgba(154,107,19,.3);}
+tr.row--diff td{background:#fef7f6;}
+tr.row--missing{background:var(--red-bg);box-shadow:inset 3px 0 0 var(--red);}
+tr.row--extra{background:var(--amber-bg);box-shadow:inset 3px 0 0 var(--amber);}
+.tag{
+  display:inline-block;margin-top:5px;font-size:11.5px;color:var(--amber);
+  background:var(--amber-bg);border:1px solid rgba(154,107,19,.3);border-radius:5px;padding:0 6px;
+}
+.empty-row td{text-align:center;color:var(--navy-300);padding:34px 16px;}
+
+/* ==========================================================================
+   9. 说明区
+   ========================================================================== */
+.notes{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;}
+.notes li{
+  position:relative;padding-left:20px;margin-bottom:9px;font-size:14.5px;color:var(--muted);
+}
+.notes li:last-child{margin-bottom:0;}
+.notes li::before{content:"";position:absolute;left:2px;top:11px;width:7px;height:7px;border-radius:2px;background:var(--navy-300);}
+.notes b{color:var(--navy-700);}
+
+/* ==========================================================================
+   10. 页脚
+   ========================================================================== */
+.foot{background:var(--navy-900);color:#8ba0b5;padding:34px 0;margin-top:20px;font-size:13.5px;}
+.foot span{color:#cfd9e4;}
+
+/* ==========================================================================
+   11. 响应式 + 打印
+   ========================================================================== */
+@media (max-width:900px){
+  .grid2{grid-template-columns:1fr;}
+}
+@media (max-width:640px){
+  .wrap{padding:0 14px;}
+  .section{padding:32px 0;}
+  .panel{padding:14px;}
+  .textarea{min-height:190px;font-size:13.5px;}
+  .btn--primary{width:100%;}
+  .stat__num{font-size:24px;}
+  .opts{gap:12px;}
+}
+@media print{
+  .no-print{display:none!important;}
+  body{background:#fff;}
+  .panel,.stat,.table-scroll,.notes{box-shadow:none;}
+  .table-scroll{overflow:visible;}
+  table{min-width:0;font-size:12px;}
+  .filters,.topbar .badge{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ====================== 页头 ====================== -->
+<header class="topbar">
+  <div class="wrap">
+    <span class="badge">纯本地运行 · 不上传任何数据</span>
+    <h1>清单 / 预结算 AI 校对工具</h1>
+    <p>把「基准清单」和「对比清单」两份条目分别粘进来，按项目名称自动匹配，逐条比对数量偏差，并标出缺失项与多余项，用于清单与预结算文件的双向交叉核对。</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ==================== 1. 输入区 ==================== -->
+  <section class="section">
+    <h2 class="section__title">① 粘贴两份清单</h2>
+    <p class="section__hint">
+      每行一条，格式为「<code>名称 数量 单位</code>」，例如 <code>现浇混凝土 C30 120 m³</code>、<code>钢筋 HRB400 8.6 t</code>。
+      支持从 Excel 直接复制整列（制表符分隔会自动识别），名称中带 C30、HRB400、DN110、1#楼 等规格编号不影响匹配。
+    </p>
+
+    <div class="panel">
+      <div class="grid2">
+        <div class="field">
+          <div class="field__label"><b>基准清单</b><span id="cntBase">0 条</span></div>
+          <textarea id="baseInput" class="textarea" spellcheck="false" placeholder="现浇混凝土 C30 120 m³&#10;钢筋 HRB400 8.6 t&#10;模板 复合板 5600 m²&#10;……"></textarea>
+        </div>
+        <div class="field">
+          <div class="field__label"><b>对比清单</b><span id="cntCmp">0 条</span></div>
+          <textarea id="cmpInput" class="textarea" spellcheck="false" placeholder="现浇混凝土 C30 135 m³&#10;钢筋 HRB400 8.6t&#10;脚手架 落地式 4200 m²&#10;……"></textarea>
+        </div>
+      </div>
+
+      <div class="toolbar no-print">
+        <button class="btn btn--primary" id="btnRun">开始校对</button>
+        <button class="btn" id="btnSample">载入示例</button>
+        <button class="btn" id="btnImportBase">导入基准 (.txt)</button>
+        <button class="btn" id="btnImportCmp">导入对比 (.txt)</button>
+        <button class="btn" id="btnSwap">左右互换</button>
+        <button class="btn" id="btnClear">清空</button>
+        <input type="file" id="fileBase" accept=".txt,.csv,.tsv,.md" hidden>
+        <input type="file" id="fileCmp" accept=".txt,.csv,.tsv,.md" hidden>
+      </div>
+
+      <div class="opts no-print">
+        <label>数量偏差阈值
+          <input type="number" id="tol" min="0" max="100" step="0.5" value="2"> %
+        </label>
+        <label><input type="checkbox" id="fuzzy" checked> 启用近似名称匹配（同名/近名视为匹配）</label>
+        <span class="tip">判定规则：|对比 − 基准| ÷ 基准 ≤ 阈值 → 一致；超出 → 量差预警。名称归一化：去空格、忽略大小写、忽略单位与标点差异。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2. 校对结果 ==================== -->
+  <section class="section divider" id="results" style="display:none;">
+
+    <h2 class="section__title">② 校对结果</h2>
+    <div class="stats" id="stats"></div>
+
+    <div id="alertBox"></div>
+
+    <div class="filters no-print" id="filters"></div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30%;">名称</th>
+            <th style="width:16%;">基准数量</th>
+            <th style="width:16%;">对比数量</th>
+            <th style="width:20%;">偏差</th>
+            <th style="width:14%;">状态</th>
+          </tr>
+        </thead>
+        <tbody id="rowsBody"></tbody>
+      </table>
+    </div>
+
+    <div class="toolbar no-print" style="margin-top:26px;">
+      <button class="btn" id="btnCopy">复制校对报告</button>
+      <button class="btn" id="btnDownload">下载报告 (.txt)</button>
+      <button class="btn btn--ghost" id="btnPrint">打印 / 存为 PDF</button>
+      <span class="spacer"></span>
+      <span class="tip" style="color:var(--muted);font-size:13.5px;" id="runMeta"></span>
+    </div>
+  </section>
+
+  <!-- ==================== 3. 使用说明 ==================== -->
+  <section class="section divider">
+    <h2 class="section__title">③ 使用说明与边界</h2>
+    <div class="notes">
+      <ul>
+        <li><b>本工具用确定性规则做数量与条目交叉核对，非大模型推理。</b>匹配靠名称归一化后的字符串比对，判定靠固定的偏差阈值，不做任何语义推测。</li>
+        <li>因此名称写法差异较大（如「现浇混凝土」与「砼 C30 现浇」无法互相匹配）时，可能出现本不存在的缺失项/多余项，开启近似名称匹配可部分缓解，但请<b>以实际数据与原始文件为准</b>。</li>
+        <li>数量偏差百分比以基准清单为分母；基准数量为 0 时按 ±100% 计；只出现单侧条目的，按缺失/多余统计，不计算偏差。</li>
+        <li>基准清单内部出现同名多行时按<b>数量累加</b>后参与比对，表格中会标注「合并 N 行」。单位不一致只做提示，不改变状态判定。</li>
+        <li>如需接入大模型做<b>语义比对</b>（同义项识别、规格/做法一致性校验、单价合理性分析等），可在现有规则结果之上再扩展一个模型调用环节。</li>
+        <li>全部计算在浏览器本地完成，清单内容只存在你自己的浏览器里（localStorage 草稿），<b>不上传任何服务器</b>。</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">纯 HTML/CSS/JS 单文件实现，数据只存在你自己的浏览器里，不上传服务器。　·　<span>清单 / 预结算 AI 校对工具</span></div>
+</footer>
+
+<script>
+/* ==========================================================================
+   A. 配置（阈值、示例、已知单位表）
+   ========================================================================== */
+const LS_BASE = 'listcheck.base';
+const LS_CMP  = 'listcheck.cmp';
+const LS_OPT  = 'listcheck.opt';
+
+const FUZZY_MIN   = 0.72;   // 近似匹配的 bigram 相似度下限
+const STATUS_TEXT = { ok:'一致', diff:'量差预警', missing:'缺失项', extra:'多余项' };
+
+const UNIT_LIST = [
+  'm³','m²','m3','m2','㎡','m','km','cm','mm','dm','km','m²',
+  't','吨','kg','千克','公斤','g','t','立方米','平方米','立方米','平方米',
+  '个','项','套','根','处','只','台','樘','延米','米','元','%','台班',
+  '卷','块','张','袋','桶','次','人','工日','座','间','组','付','条','段','层','平','立'
+];
+const UNIT_SET = new Set(UNIT_LIST.map(u => normName(u)));
+
+const SAMPLE_BASE = `场地平整 3200 m²
+土方开挖 4800 m³
+回填土夯实 2600 m³
+现浇混凝土 C30 120 m³
+现浇混凝土 C35 主体结构 860 m³
+钢筋 HRB400 Φ12 8.6 t
+钢筋 HRB400 Φ20 26.4 t
+直螺纹连接 Φ20 4200 个
+模板 复合板 5600 m²
+落地式脚手架 外架 4200 m²
+给排水 立管 DN110 240 m
+喷淋管道 DN65 1200 m
+灯具 开关插座面板 2680 套
+马凳筋 Φ8 1.2 t`;
+
+const SAMPLE_CMP = `场地平整 3200 ㎡
+土方开挖 4950 m³
+回填土夯实 2600m3
+现浇混凝土 C30 泵送 135 m³
+现浇混凝土 C35 主体结构 851 m³
+钢筋 HRB400 Φ12 8.6t
+直螺纹连接 Φ20 4200 个
+模板 复合板 6180 m²
+落地式脚手架 外架 4200m²
+悬挑脚手架 1-8层 1100 m²
+给排水 立管 DN110 240 m
+消火栓箱 86 套
+灯具 开关插座面板 2680 套
+安全网 封闭防护 1800 m²`;
+
+/* ==========================================================================
+   B. 文本解析：行 → { name, qty, unit, lineNo }
+   ========================================================================== */
+
+/** 名称归一化：全角转半角、转小写、去空白与标点（忽略大小写/空格/单位差异） */
+function normName(s){
+  return String(s == null ? '' : s)
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\s\u3000]/g, '')
+    .replace(/[()（）\[\]【】{}<>《》"'`·・.,，。、;；:：!！?？\-_/\\|*#"'~^&+=@]/g, '');
+}
+
+/** 是否纯数字（允许千分位与小数） */
+function isPureNum(t){
+  return /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(t) || /^[+-]?\d+(?:\.\d+)?$/.test(t);
+}
+
+/** 数字字符串转数值，顺带清掉千分位逗号 */
+function toNum(t){
+  const n = parseFloat(String(t).replace(/,/g, ''));
+  return isFinite(n) ? n : null;
+}
+
+/**
+ * 是否已知计量单位（用于「数字+单位」写法的识别）。
+ * 单位表是精确匹配表，所以 m3 / m2 / ㎡ 这类自带数字的写法也能命中，
+ * 而 1200、DN110 之类的名称片段不会误判。
+ */
+function isUnit(t){
+  return !!t && UNIT_SET.has(normName(t));
+}
+
+/**
+ * 切词：兼容「空格 / 制表符分隔」与「逗号分隔」两种粘贴来源，
+ * 同时保护千分位逗号（5,600 不能被切成两个 token）。
+ */
+function tokenize(line){
+  const guarded = String(line).replace(/(\d),(?=\d{3}(?!\d))/g, '$1\u0001');
+  return guarded
+    .split(/[\s\u3000,，;；|]+/)
+    .filter(Boolean)
+    .map(t => t.replace(/\u0001/g, ','));
+}
+
+/**
+ * 把一个 token 拆成「名称前缀 + 数字 + 单位」，
+ * 用于识别 120m³ / 2600m3 / 8.6t / 静载试验3根 这类连写写法。
+ * 单位里可能自带数字（m3 / m2），所以单位部分不做「不含数字」的假设，改由 isUnit 判定。
+ */
+function splitNumUnit(t){
+  const m = t.match(/^([^\d]*?)([+-]?[\d,]+(?:\.\d+)?)(.*)$/);
+  if (!m) return null;
+  return { prefix:m[1], num:m[2], rest:m[3] };
+}
+
+/**
+ * 从 token 序列右侧抽取「数量 + 单位」。
+ * 优先假设末尾就是「数量 单位」，所以从右往左取。
+ */
+function takeFromRight(tokens){
+  const out = { qty:null, unit:'', end:tokens.length, suffix:'' };
+  if (!tokens.length) return out;
+  const last = tokens[tokens.length - 1];
+
+  // 末位本身是纯数字：数量在最后，可能后面还有一个单位
+  if (isPureNum(last)){
+    out.qty = toNum(last);
+    out.end = tokens.length - 1;
+    const u = tokens[out.end - 1];
+    if (isUnit(u)){ out.unit = u; out.end--; }
+    return out;
+  }
+
+  // 末位是「数字+单位」连写，如 120m³ / 2600m3 / 8.6t / 静载试验3根
+  const tail = splitNumUnit(last);
+  if (tail && isUnit(tail.rest)){
+    out.qty = toNum(tail.num);
+    out.unit = tail.rest;
+    out.suffix = tail.prefix.trim();
+    out.end = tokens.length - 1;
+    return out;
+  }
+
+  // 末位是单位，上一位是数量 / 「数字+单位」
+  if (isUnit(last) && tokens.length >= 2){
+    const prev = tokens[tokens.length - 2];
+    if (isPureNum(prev)){
+      out.qty = toNum(prev);
+      out.unit = last;
+      out.end = tokens.length - 2;
+      return out;
+    }
+    const prevTail = splitNumUnit(prev);
+    if (prevTail && isUnit(prevTail.rest)){
+      out.qty = toNum(prevTail.num);
+      out.unit = prevTail.rest;
+      out.suffix = prevTail.prefix.trim();
+      out.end = tokens.length - 2;
+    }
+  }
+  return out;
+}
+
+/** 兜底：名称里还残留「数字+已知单位」时，取最靠前的那个当数量 */
+function findQtyInName(name){
+  const tokens = tokenize(name);
+  for (let i = 0; i < tokens.length; i++){
+    const t = tokens[i];
+    if (isPureNum(t)){
+      const u = tokens[i + 1];
+      return { qty:toNum(t), unit:isUnit(u) ? u : '', name:tokens.slice(0, i).join(' ') };
+    }
+    const m = splitNumUnit(t);
+    if (m && isUnit(m.rest)){
+      const head = (m.prefix + ' ').trim();
+      return { qty:toNum(m.num), unit:m.rest, name:[...tokens.slice(0, i), head].filter(Boolean).join(' ') };
+    }
+  }
+  return null;
+}
+
+/** 解析单行文本，返回条目对象；无法识别数量时 qty 为 null */
+function parseLine(raw, no){
+  const line = String(raw).trim();
+  if (!line) return null;
+
+  const tokens = tokenize(line);
+  const got = takeFromRight(tokens);
+  let name = tokens.slice(0, got.end).join(' ');
+  if (got.suffix) name = name ? name + ' ' + got.suffix : got.suffix;
+  let qty = got.qty, unit = got.unit;
+
+  // 名称里还残留「数字+单位」且数值更大 → 真正的数量在前面（如「土方开挖 4800m³ 含运距8km」），
+  // 只有数值更大才改判，避免把「防水卷材 3mm 860 m²」里的规格 3mm 误当数量
+  const left = findQtyInName(name);
+  if (left && left.qty !== null && (qty === null || left.qty > qty)){
+    name = left.name || name;
+    qty = left.qty;
+    if (left.unit) unit = left.unit;
+  }
+
+  name = name.replace(/\s+/g, ' ').trim();
+  return { name:name, qty:qty, unit:unit || '', lineNo:no, raw:line };
+}
+
+/** 解析整段文本：同名条目数量累加 */
+function parseList(text){
+  const lines = String(text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const items = [];
+  const map = new Map();
+
+  lines.forEach((line, idx) => {
+    const p = parseLine(line, idx + 1);
+    if (!p || !p.name) return;
+    const key = normName(p.name);
+    if (!key) return;
+
+    if (map.has(key)){
+      const it = map.get(key);
+      it.lines.push(p.lineNo);
+      if (p.qty !== null) it.qty = (it.qty === null ? 0 : it.qty) + p.qty;
+      if (!it.unit && p.unit) it.unit = p.unit;
+      if (it.unit && p.unit && normName(it.unit) !== normName(p.unit)) it.unitConflict = true;
+      return;
+    }
+    map.set(key, {
+      key:key, name:p.name, qty:p.qty, unit:p.unit,
+      lines:[p.lineNo], unitConflict:false, noQty:p.qty === null ? 1 : 0
+    });
+    items.push(map.get(key));
+  });
+
+  return { items:items, lines:lines.length, noQty:items.reduce((s, i) => s + i.noQty, 0) };
+}
+
+/* ==========================================================================
+   C. 相似度与比对
+   ========================================================================== */
+
+/** 生成字符 bigram 集合（CJK 文本用字符级切分更稳） */
+function bigrams(key){
+  const set = new Set();
+  if (key.length < 2){ set.add(key); return set; }
+  for (let i = 0; i < key.length - 1; i++) set.add(key.slice(i, i + 2));
+  return set;
+}
+
+/** Dice 相似度：2|A∩B| / (|A|+|B|) */
+function similarity(a, b){
+  const A = bigrams(a), B = bigrams(b);
+  if (!A.size || !B.size) return 0;
+  let hit = 0;
+  A.forEach(x => { if (B.has(x)) hit++; });
+  return (2 * hit) / (A.size + B.size);
+}
+
+/**
+ * 核心比对：先按归一化名称精确匹配，再按相似度做近似匹配（可关闭），
+ * 未匹配上的基准项记为缺失，未匹配上的对比项记为多余。
+ * @returns {{rows:Array, stats:object}}
+ */
+function compare(baseItems, cmpItems, tol, useFuzzy){
+  const usedB = new Set(), usedC = new Set();
+  const rows = [];
+
+  // —— 1. 精确匹配 ——
+  const cmpByKey = new Map();
+  cmpItems.forEach((c, ci) => {
+    if (!cmpByKey.has(c.key)) cmpByKey.set(c.key, []);
+    cmpByKey.get(c.key).push(ci);
+  });
+  baseItems.forEach(b => {
+    const list = cmpByKey.get(b.key);
+    if (!list || !list.length) return;
+    const ci = list.shift();
+    usedB.add(b.key); usedC.add(ci);
+    rows.push(makeRow(b, cmpItems[ci], tol, 'exact'));
+  });
+
+  // —— 2. 近似匹配：候选对按相似度从高到低贪心配对，一对一对用 ——
+  if (useFuzzy && baseItems.length * cmpItems.length <= 40000){
+    const free = [];
+    baseItems.forEach(b => { if (!usedB.has(b.key)) free.push(b); });
+    const pairs = [];
+    free.forEach(b => {
+      cmpItems.forEach((c, ci) => {
+        if (usedC.has(ci)) return;
+        const s = similarity(b.key, c.key);
+        if (s >= FUZZY_MIN) pairs.push({ b:b, ci:ci, s:s });
+      });
+    });
+    pairs.sort((x, y) => y.s - x.s);
+    pairs.forEach(p => {
+      if (usedB.has(p.b.key) || usedC.has(p.ci)) return;
+      usedB.add(p.b.key); usedC.add(p.ci);
+      rows.push(makeRow(p.b, cmpItems[p.ci], tol, 'fuzzy', p.s));
+    });
+  }
+
+  // —— 3. 缺失项 / 多余项 ——
+  baseItems.forEach(b => { if (!usedB.has(b.key)) rows.push(makeRow(b, null, tol, 'missing')); });
+  cmpItems.forEach((c, ci) => { if (!usedC.has(ci)) rows.push(makeRow(null, c, tol, 'extra')); });
+
+  // —— 4. 排序：先按状态优先级，再按原顺序 ——
+  const order = { diff:0, missing:1, extra:2, ok:3 };
+  rows.sort((x, y) => {
+    if (order[x.status] !== order[y.status]) return order[x.status] - order[y.status];
+    const nx = (x.b && x.b.lines[0]) || 99999;
+    const ny = (y.b && y.b.lines[0]) || ((y.c && y.c.lines[0]) + 0.5) || 99999;
+    return nx - ny;
+  });
+
+  const stats = {
+    base:baseItems.length, cmp:cmpItems.length,
+    ok:rows.filter(r => r.status === 'ok').length,
+    diff:rows.filter(r => r.status === 'diff').length,
+    missing:rows.filter(r => r.status === 'missing').length,
+    extra:rows.filter(r => r.status === 'extra').length,
+    fuzzy:rows.filter(r => r.matchType === 'fuzzy').length,
+    unitIssue:rows.filter(r => r.unitMismatch).length
+  };
+  return { rows:rows, stats:stats };
+}
+
+/** 生成一行比对结果并判定状态 */
+function makeRow(b, c, tol, matchType, score){
+  const row = {
+    b:b, c:c, matchType:matchType, score:score,
+    name:b ? b.name : c.name,
+    qtyB:b ? b.qty : null, qtyC:c ? c.qty : null,
+    unitB:b ? b.unit : '', unitC:c ? c.unit : '',
+    mergedB:b ? b.lines.length : 0, mergedC:c ? c.lines.length : 0,
+    delta:null, pct:null, status:'ok', unitMismatch:false
+  };
+
+  // 单位不一致（只在两侧都有单位时提示）
+  row.unitMismatch = !!(row.unitB && row.unitC && normName(row.unitB) !== normName(row.unitC));
+
+  if (matchType === 'missing'){ row.status = 'missing'; return row; }
+  if (matchType === 'extra'){ row.status = 'extra'; return row; }
+
+  // 有一侧没解析出数量 → 不下结论，按量差预警处理并说明
+  if (row.qtyB === null || row.qtyC === null){
+    row.status = 'diff';
+    row.note = '数量未识别';
+    return row;
+  }
+
+  row.delta = round(row.qtyC - row.qtyB, 4);
+  row.pct = row.qtyB === 0 ? (row.qtyC === 0 ? 0 : 100 * Math.sign(row.qtyC || 1)) : round(row.delta / Math.abs(row.qtyB) * 100, 2);
+  row.status = Math.abs(row.pct) <= tol ? 'ok' : 'diff';
+  return row;
+}
+
+/** 保留有效位数的四舍五入 */
+function round(n, d){
+  const p = Math.pow(10, d);
+  return Math.round(n * p) / p;
+}
+
+/** 数量展示：去掉无意义的小数尾零 */
+function fmtNum(n){
+  if (n === null || n === undefined || !isFinite(n)) return '—';
+  const r = round(n, 4);
+  return String(r);
+}
+
+/* ==========================================================================
+   D. 渲染
+   ========================================================================== */
+const el = id => document.getElementById(id);
+let lastResult = null;    // 最近一次结果，导出报告复用
+let lastInput = { base:'', cmp:'' };
+let curFilter = 'all';
+
+const FILTER_DEFS = [
+  { id:'all',     label:'全部' },
+  { id:'diff',    label:'量差预警' },
+  { id:'missing', label:'缺失项' },
+  { id:'extra',   label:'多余项' },
+  { id:'ok',      label:'一致' }
+];
+
+function renderStats(s){
+  el('stats').innerHTML = `
+    <div class="stat"><div class="stat__num">${s.base}</div><div class="stat__label">基准条目数</div></div>
+    <div class="stat"><div class="stat__num">${s.cmp}</div><div class="stat__label">对比条目数</div></div>
+    <div class="stat ${s.ok ? 'stat--ok' : ''}"><div class="stat__num">${s.ok}</div><div class="stat__label">一致</div></div>
+    <div class="stat ${s.diff ? 'stat--warn' : ''}"><div class="stat__num">${s.diff}</div><div class="stat__label">量差预警</div></div>
+    <div class="stat ${s.missing ? 'stat--warn' : ''}"><div class="stat__num">${s.missing}</div><div class="stat__label">缺失项</div></div>
+    <div class="stat ${s.extra ? 'stat--amber' : ''}"><div class="stat__num">${s.extra}</div><div class="stat__label">多余项</div></div>`;
+}
+
+function renderAlert(res, s, meta){
+  const box = el('alertBox');
+  const parts = [];
+
+  if (s.diff + s.missing + s.extra === 0 && s.base){
+    parts.push({ cls:'ok', icon:'✓', html:`两份清单<b>全部条目一一对应且数量在阈值内</b>，未发现缺项、多余项或量差。` });
+  } else {
+    parts.push({
+      cls:'warn', icon:'⚠',
+      html:`检出 <b>量差预警 ${s.diff}</b> 项、<b>缺失 ${s.missing}</b> 项、<b>多余 ${s.extra}</b> 项，请优先核对下方红色与黄色标注的行。`
+    });
+  }
+  if (s.fuzzy){
+    parts.push({ cls:'info', icon:'≈', html:`其中 <b>${s.fuzzy}</b> 对为<b>近似名称匹配</b>（名称不完全一致但相似度 ≥ ${FUZZY_MIN}），请人工确认是否确实是同一项。` });
+  }
+  if (s.unitIssue){
+    parts.push({ cls:'info', icon:'⚑', html:`检出 <b>${s.unitIssue}</b> 项<b>单位不一致</b>，数量比对结果需先统一口径后再采信。` });
+  }
+  if (meta.noQtyB || meta.noQtyC){
+    parts.push({ cls:'info', icon:'!', html:`有 <b>${meta.noQtyB + meta.noQtyC}</b> 行未识别出数量（${meta.noQtyB} 行在基准、${meta.noQtyC} 行在对比），已计入量差预警，请检查「名称 数量 单位」格式。` });
+  }
+  if (meta.merged){
+    parts.push({ cls:'info', icon:'∑', html:`基准中有 <b>${meta.merged}</b> 条同名多行已按<b>数量累加</b>后参与比对（表格中标注「合并 N 行」）。` });
+  }
+
+  box.innerHTML = parts.map(p => `<div class="alert alert--${p.cls}"><span class="alert__icon">${p.icon}</span><div>${p.html}</div></div>`).join('');
+}
+
+function renderFilters(s){
+  el('filters').innerHTML = FILTER_DEFS.map(f => {
+    const cnt = f.id === 'all' ? s.ok + s.diff + s.missing + s.extra : s[f.id];
+    return `<button class="chipbtn ${curFilter === f.id ? 'is-active' : ''}" data-f="${f.id}">${f.label}<i>${cnt}</i></button>`;
+  }).join('');
+
+  el('filters').querySelectorAll('.chipbtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      curFilter = btn.dataset.f;
+      renderFilters(lastResult.stats);
+      renderTable(lastResult.rows);
+    });
+  });
+}
+
+function renderTable(rows){
+  const maxPct = Math.max(1, ...rows.map(r => Math.abs(r.pct || 0)));
+  const list = curFilter === 'all' ? rows : rows.filter(r => r.status === curFilter);
+
+  if (!list.length){
+    el('rowsBody').innerHTML = `<tr class="empty-row"><td colspan="5">没有该类条目。</td></tr>`;
+    return;
+  }
+
+  el('rowsBody').innerHTML = list.map(r => rowHtml(r, maxPct)).join('');
+}
+
+/** 单行 HTML */
+function rowHtml(row, maxPct){
+  const cls = 'row--' + row.status;
+  const nameTags = [];
+  if (row.mergedB > 1) nameTags.push(`<span class="tag">基准合并 ${row.mergedB} 行</span>`);
+  if (row.mergedC > 1) nameTags.push(`<span class="tag">对比合并 ${row.mergedC} 行</span>`);
+  if (row.matchType === 'fuzzy') nameTags.push(`<span class="tag">近似匹配 ${Math.round((row.score || 0) * 100)}%</span>`);
+  if (row.unitMismatch) nameTags.push('<span class="tag">单位不一致</span>');
+
+  // 名称：近似匹配时两侧都列出来，便于人工确认
+  let nameCell;
+  if (row.matchType === 'fuzzy' && row.c){
+    nameCell = `<div class="item-name">${esc(row.b.name)}<small>对比侧：${esc(row.c.name)}</small></div>${nameTags.join('')}`;
+  } else {
+    nameCell = `<div class="item-name">${esc(row.name)}</div>${nameTags.join('')}`;
+  }
+
+  const qtyCell = (q, u) => q === null || q === undefined
+    ? '<span class="empty">未识别</span>'
+    : `<span class="num"><b>${fmtNum(q)}</b></span><span class="unit">${esc(u || '')}</span>`;
+
+  let devCell;
+  if (row.status === 'missing' || row.status === 'extra'){
+    devCell = '<span class="dev dev--ok">—</span>';
+  } else if (row.status === 'diff' && row.note === '数量未识别'){
+    devCell = '<span class="dev dev--down">无法计算</span>';
+  } else {
+    const up = row.delta > 0, down = row.delta < 0;
+    const k = up ? 'dev--up' : (down ? 'dev--down' : 'dev--ok');
+    const w = Math.min(100, Math.abs(row.pct) / maxPct * 100);
+    const detail = row.delta === 0
+      ? ''
+      : `<small>${up ? '多出' : '少出'} ${fmtNum(Math.abs(row.delta))}${esc(row.unitC || row.unitB || '')}</small>`;
+    devCell = `<span class="dev ${k}">${up ? '+' : ''}${row.pct.toFixed(2)}%${detail}</span>
+      ${row.status === 'diff' ? `<div class="bar"><div class="bar__fill ${down ? 'bar__fill--down' : ''}" style="width:${w.toFixed(1)}%"></div></div>` : ''}`;
+  }
+
+  return `<tr class="${cls}">
+    <td>${nameCell}</td>
+    <td>${qtyCell(row.qtyB, row.unitB)}</td>
+    <td>${qtyCell(row.qtyC, row.unitC)}</td>
+    <td>${devCell}</td>
+    <td><span class="status status--${row.status}">${STATUS_TEXT[row.status]}</span></td>
+  </tr>`;
+}
+
+/** HTML 转义 */
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
+}
+
+/* ==========================================================================
+   E. 运行入口
+   ========================================================================== */
+function doRun(){
+  const baseText = el('baseInput').value;
+  const cmpText = el('cmpInput').value;
+  if (!baseText.trim() && !cmpText.trim()){ alert('请至少粘贴一份清单内容。'); return; }
+
+  const tol = getTol();
+  const useFuzzy = el('fuzzy').checked;
+
+  const B = parseList(baseText);
+  const C = parseList(cmpText);
+  const res = compare(B.items, C.items, tol, useFuzzy);
+
+  const meta = {
+    noQtyB:B.noQty, noQtyC:C.noQty,
+    merged:B.items.filter(i => i.lines.length > 1).length,
+    linesB:B.lines, linesC:C.lines,
+    tol:tol, fuzzy:useFuzzy
+  };
+
+  lastResult = res;
+  lastInput = { base:baseText, cmp:cmpText };
+  curFilter = 'all';
+
+  renderStats(res.stats);
+  renderAlert(res, res.stats, meta);
+  renderFilters(res.stats);
+  renderTable(res.rows);
+
+  el('runMeta').textContent =
+    `原始行数：基准 ${meta.linesB} 行 / 对比 ${meta.linesC} 行　·　阈值 ±${tol}%　·　${useFuzzy ? '近似匹配开' : '近似匹配关'}`;
+  el('results').style.display = '';
+}
+
+/** 取阈值，非法值回落到 2 */
+function getTol(){
+  const v = parseFloat(el('tol').value);
+  if (!isFinite(v) || v < 0) return 2;
+  return Math.min(100, v);
+}
+
+/** 结果是否已过期：清单被改动后重新计算，避免导出旧报告 */
+function currentResult(){
+  if (!lastResult) return null;
+  if (lastInput.base !== el('baseInput').value || lastInput.cmp !== el('cmpInput').value) doRun();
+  return lastResult;
+}
+
+/* ==========================================================================
+   F. 报告导出（复制 / 下载 / 打印）
+   ========================================================================== */
+function lineOf(row){
+  const u = row.unitC || row.unitB || '';
+  const q = (n, uu) => (n === null || n === undefined) ? '未识别' : `${fmtNum(n)}${uu || ''}`;
+  let s = `  ${row.name}`;
+  if (row.matchType === 'fuzzy' && row.c) s += `（对比侧写作「${row.c.name}」）`;
+  if (row.mergedB > 1) s += `［基准合并 ${row.mergedB} 行］`;
+  s += `：基准 ${q(row.qtyB, row.unitB)}｜对比 ${q(row.qtyC, row.unitC)}`;
+  if (row.status === 'diff'){
+    s += row.note === '数量未识别'
+      ? '｜偏差 无法计算（数量未识别）'
+      : `｜偏差 ${row.pct > 0 ? '+' : ''}${row.pct.toFixed(2)}%（${row.delta > 0 ? '多出' : (row.delta < 0 ? '少出' : '持平')} ${fmtNum(Math.abs(row.delta))}${u}）`;
+  }
+  if (row.unitMismatch) s += '｜⚠ 单位不一致';
+  return s;
+}
+
+function buildReport(){
+  const res = currentResult();
+  if (!res) return '';
+  const s = res.stats;
+  const L = [];
+  L.push('清单 / 预结算 校对报告');
+  L.push('生成时间：' + new Date().toLocaleString('zh-CN'));
+  L.push('判定阈值：数量偏差 ±' + getTol() + '%（可调）');
+  L.push('匹配规则：名称归一化后比对，' + (el('fuzzy').checked ? '并启用近似名称匹配' : '不做近似匹配'));
+  L.push('—'.repeat(40));
+  L.push(`基准条目：${s.base}　对比条目：${s.cmp}`);
+  L.push(`一致：${s.ok}｜量差预警：${s.diff}｜缺失项：${s.missing}｜多余项：${s.extra}`);
+  if (s.fuzzy) L.push(`其中近似名称匹配：${s.fuzzy} 对（请人工确认）`);
+  if (s.unitIssue) L.push(`其中单位不一致：${s.unitIssue} 项（数量比对口径存疑）`);
+  L.push('');
+
+  const part = (title, status, mark) => {
+    const rows = res.rows.filter(r => r.status === status);
+    L.push(`【${title}】（${rows.length} 项）`);
+    if (!rows.length) L.push('  无');
+    rows.forEach(r => L.push((mark ? mark + ' ' : '  ') + lineOf(r).trimStart()));
+    L.push('');
+  };
+  part('一、量差预警', 'diff', '✗');
+  part('二、缺失项（基准有、对比无）', 'missing', '✗');
+  part('三、多余项（对比有、基准无）', 'extra', '＋');
+  part('四、数量一致项', 'ok', '✓');
+
+  L.push('—'.repeat(40));
+  L.push('说明：本报告由确定性规则生成（名称归一化匹配 + 固定偏差阈值），非大模型推理；');
+  L.push('结果仅供快速定位差异，最终请以实际清单、图纸与合同文件为准。');
+  return L.join('\n');
+}
+
+/* ==========================================================================
+   G. 事件绑定与初始化
+   ========================================================================== */
+function updateCounters(){
+  const n = t => String(t || '').split(/\r?\n/).filter(s => s.trim()).length;
+  el('cntBase').textContent = n(el('baseInput').value) + ' 行';
+  el('cntCmp').textContent = n(el('cmpInput').value) + ' 行';
+}
+
+function saveAll(){
+  try{
+    localStorage.setItem(LS_BASE, el('baseInput').value);
+    localStorage.setItem(LS_CMP, el('cmpInput').value);
+    localStorage.setItem(LS_OPT, JSON.stringify({ tol:getTol(), fuzzy:el('fuzzy').checked }));
+  }catch(e){}
+}
+
+function loadAll(){
+  try{
+    el('baseInput').value = localStorage.getItem(LS_BASE) || '';
+    el('cmpInput').value = localStorage.getItem(LS_CMP) || '';
+    const opt = JSON.parse(localStorage.getItem(LS_OPT) || 'null');
+    if (opt){
+      if (isFinite(opt.tol)) el('tol').value = opt.tol;
+      if (typeof opt.fuzzy === 'boolean') el('fuzzy').checked = opt.fuzzy;
+    }
+  }catch(e){}
+}
+
+/** 绑定文件导入：纯前端读取 txt/csv，不上传 */
+function bindFile(inputId, targetId){
+  el(inputId).addEventListener('change', function(e){
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(){
+      el(targetId).value = String(reader.result || '');
+      updateCounters(); saveAll(); doRun();
+      e.target.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+function init(){
+  loadAll();
+  updateCounters();
+
+  ['baseInput','cmpInput'].forEach(id => {
+    let t = null;
+    el(id).addEventListener('input', function(){
+      updateCounters();
+      clearTimeout(t);
+      t = setTimeout(saveAll, 400);
+    });
+    el(id).addEventListener('keydown', function(e){
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') doRun();
+    });
+  });
+
+  el('btnRun').addEventListener('click', doRun);
+
+  el('tol').addEventListener('input', function(){ saveAll(); if (lastResult) doRun(); });
+  el('fuzzy').addEventListener('change', function(){ saveAll(); if (lastResult) doRun(); });
+
+  el('btnSample').addEventListener('click', function(){
+    el('baseInput').value = SAMPLE_BASE;
+    el('cmpInput').value = SAMPLE_CMP;
+    updateCounters(); saveAll(); doRun();
+  });
+
+  el('btnSwap').addEventListener('click', function(){
+    const a = el('baseInput').value;
+    el('baseInput').value = el('cmpInput').value;
+    el('cmpInput').value = a;
+    updateCounters(); saveAll();
+    if (lastResult) doRun();
+  });
+
+  el('btnClear').addEventListener('click', function(){
+    if (!el('baseInput').value.trim() && !el('cmpInput').value.trim()) return;
+    if (!confirm('确定清空两份清单内容？')) return;
+    el('baseInput').value = ''; el('cmpInput').value = '';
+    el('results').style.display = 'none';
+    lastResult = null;
+    updateCounters(); saveAll();
+  });
+
+  bindFile('fileBase', 'baseInput');
+  bindFile('fileCmp', 'cmpInput');
+  el('btnImportBase').addEventListener('click', () => el('fileBase').click());
+  el('btnImportCmp').addEventListener('click', () => el('fileCmp').click());
+
+  el('btnCopy').addEventListener('click', function(){
+    const report = buildReport();
+    if (!report){ alert('请先点「开始校对」生成结果。'); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(report)
+        .then(() => alert('校对报告已复制到剪贴板。'))
+        .catch(() => fallbackCopy(report));
+    } else {
+      fallbackCopy(report);
+    }
+  });
+
+  el('btnDownload').addEventListener('click', function(){
+    const report = buildReport();
+    if (!report){ alert('请先点「开始校对」生成结果。'); return; }
+    const blob = new Blob([report], { type:'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '清单校对报告_' + new Date().toISOString().slice(0, 10) + '.txt';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  el('btnPrint').addEventListener('click', function(){
+    if (!lastResult){ alert('请先点「开始校对」生成结果。'); return; }
+    window.print();
+  });
+
+  // 恢复上次草稿后自动跑一次
+  if (el('baseInput').value.trim() || el('cmpInput').value.trim()) doRun();
+}
+
+/** 非安全上下文（本地 file://）下的复制兜底 */
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  const ok = document.execCommand && document.execCommand('copy');
+  document.body.removeChild(ta);
+  alert(ok ? '校对报告已复制到剪贴板。' : '复制失败，请改用「下载报告」。');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
