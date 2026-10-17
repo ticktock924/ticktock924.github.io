@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沈江 / 个人记录</title>
+<meta name="description" content="土木工程师 → AI 解决方案探索者，记录转型路上的折腾与思考。">
+
+<style>
+/* ==========================================================================
+   1. 设计变量 —— 想改配色 / 间距 / 字号，主要改这一块就够了
+   ========================================================================== */
+:root{
+  /* 配色：沉稳深蓝 + 米白 */
+  --navy-900:#0d1f38;   /* 最深，页脚等重色区域 */
+  --navy-700:#153253;   /* 主色，标题 / 深色块 */
+  --navy-500:#2b5586;   /* 次级标题 / 强调 */
+  --navy-300:#7c98b8;   /* 辅助文字 */
+  --cream-50:#fbfaf6;   /* 页面底色（米白） */
+  --cream-100:#f3f1ea;  /* 卡片 / 分区底色 */
+  --line:#e2dfd4;       /* 分隔线 */
+  --text:#22303f;       /* 正文 */
+  --text-muted:#5c6b7a; /* 次要正文 */
+
+  /* 排版 */
+  --font-sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+
+  /* 尺寸 */
+  --maxw:960px;
+  --radius:14px;
+  --nav-h:64px;
+}
+
+/* ==========================================================================
+   2. 基础重置
+   ========================================================================== */
+*,*::before,*::after{box-sizing:border-box;}
+html{scroll-behavior:smooth;}               /* 锚点平滑滚动 */
+body{
+  margin:0;
+  font-family:var(--font-sans);
+  color:var(--text);
+  background:var(--cream-50);
+  line-height:1.9;
+  font-size:16px;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-weight:600;line-height:1.4;color:var(--navy-700);letter-spacing:.01em;margin:0;}
+p{margin:0;}
+a{color:var(--navy-500);}
+ul{margin:0;padding:0;list-style:none;}
+img{max-width:100%;display:block;}
+
+/* 页面主容器 */
+.wrap{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+
+/* 通用区块：统一的大留白 */
+.section{padding:96px 0;}
+.section--alt{background:var(--cream-100);}
+
+/* 区块标题样式（全站统一，改这里即可改所有小标题） */
+.section-title{
+  font-size:clamp(22px,3.4vw,30px);
+  margin-bottom:8px;
+}
+.section-en{
+  font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--navy-300);margin-bottom:14px;font-weight:600;
+}
+.section-lead{color:var(--text-muted);max-width:62ch;margin-bottom:44px;}
+
+/* ==========================================================================
+   3. 顶部固定导航
+   ========================================================================== */
+.nav{
+  position:fixed;inset:0 0 auto 0;height:var(--nav-h);z-index:100;
+  background:rgba(251,250,246,.86);
+  backdrop-filter:saturate(160%) blur(12px);
+  -webkit-backdrop-filter:saturate(160%) blur(12px);
+  border-bottom:1px solid transparent;
+  transition:border-color .3s ease,box-shadow .3s ease;
+}
+.nav.is-stuck{border-bottom-color:var(--line);box-shadow:0 6px 24px rgba(13,31,56,.05);}
+.nav__inner{
+  height:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.nav__brand{
+  font-weight:600;font-size:16px;color:var(--navy-700);text-decoration:none;
+  letter-spacing:.04em;white-space:nowrap;
+}
+.nav__links{display:flex;gap:28px;overflow-x:auto;scrollbar-width:none;}
+.nav__links::-webkit-scrollbar{display:none;}
+.nav__link{
+  color:var(--text-muted);text-decoration:none;font-size:14.5px;
+  padding:4px 0;position:relative;white-space:nowrap;transition:color .2s ease;
+}
+.nav__link::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:2px;
+  background:var(--navy-500);transform:scaleX(0);transform-origin:left;
+  transition:transform .28s ease;
+}
+.nav__link:hover{color:var(--navy-700);}
+.nav__link.is-active{color:var(--navy-700);font-weight:600;}
+.nav__link.is-active::after,.nav__link:hover::after{transform:scaleX(1);}
+
+/* ==========================================================================
+   4. 首屏 Hero
+   ========================================================================== */
+.hero{
+  min-height:100svh;display:flex;align-items:center;
+  padding:calc(var(--nav-h) + 40px) 0 80px;position:relative;
+}
+.hero__kicker{
+  font-size:13px;letter-spacing:.2em;color:var(--navy-300);
+  text-transform:uppercase;margin-bottom:22px;font-weight:600;
+}
+.hero__title{
+  font-size:clamp(38px,8.5vw,74px);
+  line-height:1.14;letter-spacing:-.01em;margin-bottom:26px;
+}
+.hero__title .thin{color:var(--navy-300);font-weight:300;}
+.hero__sub{
+  font-size:clamp(16px,2.2vw,20px);color:var(--text-muted);
+  max-width:34ch;line-height:1.85;
+}
+.hero__rule{width:56px;height:3px;background:var(--navy-500);margin:36px 0 0;border-radius:2px;}
+
+/* 向下箭头 */
+.hero__scroll{
+  position:absolute;left:50%;bottom:34px;transform:translateX(-50%);
+  color:var(--navy-300);text-decoration:none;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-size:12px;letter-spacing:.16em;transition:color .25s ease;
+}
+.hero__scroll:hover{color:var(--navy-500);}
+.hero__scroll svg{animation:bob 2.2s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(7px);}}
+
+/* ==========================================================================
+   5. 关于我
+   ========================================================================== */
+.about{display:grid;gap:40px;grid-template-columns:1fr;}
+@media (min-width:820px){.about{grid-template-columns:1.6fr 1fr;gap:64px;}}
+.about__text p + p{margin-top:1.2em;}
+.about__text p{color:var(--text-muted);}
+/* 侧栏小卡：基本信息 */
+.facts{
+  background:var(--cream-50);border:1px solid var(--line);
+  border-radius:var(--radius);padding:26px 24px;align-self:start;
+}
+.facts h3{font-size:15px;margin-bottom:16px;letter-spacing:.04em;}
+.facts li{
+  display:flex;justify-content:space-between;gap:16px;
+  padding:9px 0;border-top:1px dashed var(--line);font-size:14px;
+}
+.facts li:first-child{border-top:0;}
+.facts b{font-weight:500;color:var(--text-muted);}
+.facts span{color:var(--navy-700);font-weight:600;text-align:right;}
+
+/* ==========================================================================
+   6. 成长时间线
+   ========================================================================== */
+.timeline{position:relative;padding-left:30px;margin-top:8px;}
+.timeline::before{                       /* 中轴竖线 */
+  content:"";position:absolute;left:5px;top:8px;bottom:8px;width:2px;
+  background:linear-gradient(var(--line),var(--line));
+}
+.tl-item{position:relative;padding:0 0 44px;}
+.tl-item:last-child{padding-bottom:0;}
+.tl-item::before{                       /* 轴上的圆点 */
+  content:"";position:absolute;left:-30px;top:8px;
+  width:12px;height:12px;border-radius:50%;
+  background:var(--cream-50);border:2px solid var(--navy-500);
+}
+.tl-item--now::before{background:var(--navy-500);}
+.tl-year{
+  font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--navy-500);
+  font-variant-numeric:tabular-nums;
+}
+.tl-title{font-size:18px;margin:4px 0 6px;}
+.tl-desc{color:var(--text-muted);font-size:15px;}
+
+/* ==========================================================================
+   7. 作品卡片网格
+   ========================================================================== */
+.cards{
+  display:grid;gap:22px;
+  grid-template-columns:repeat(auto-fit,minmax(258px,1fr));
+}
+.card{
+  background:var(--cream-50);
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:28px 26px 24px;
+  display:flex;flex-direction:column;gap:10px;min-height:196px;
+  transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;
+}
+.card:hover{
+  transform:translateY(-4px);
+  border-color:#cfcabb;
+  box-shadow:0 14px 34px rgba(13,31,56,.08);
+}
+.card__no{font-size:12px;letter-spacing:.16em;color:var(--navy-300);font-weight:600;}
+.card__title{font-size:18px;margin:0;}
+.card__desc{color:var(--text-muted);font-size:14.5px;flex:1;}
+.card__tag{
+  align-self:flex-start;margin-top:6px;
+  font-size:11.5px;letter-spacing:.08em;font-weight:600;
+  color:var(--navy-500);background:rgba(43,85,134,.09);
+  border:1px solid rgba(43,85,134,.18);
+  padding:3px 10px;border-radius:999px;
+}
+/* 已上线后可以把 tag 文字改成「已上线」并加 .card__tag--live */
+.card__tag--live{color:#1f6b45;background:rgba(31,107,69,.09);border-color:rgba(31,107,69,.2);}
+
+/* ==========================================================================
+   8. 随笔列表
+   ========================================================================== */
+.notes{border-top:1px solid var(--line);}
+.note{border-bottom:1px solid var(--line);}
+.note__btn{
+  width:100%;background:none;border:0;cursor:pointer;font:inherit;color:inherit;
+  display:flex;align-items:center;gap:18px;text-align:left;
+  padding:24px 4px;transition:padding .25s ease,color .2s ease;
+}
+.note__btn:hover{padding-left:12px;}
+.note__date{font-size:13px;color:var(--navy-300);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.note__name{flex:1;font-size:17px;font-weight:500;color:var(--navy-700);}
+.note__icon{
+  color:var(--navy-300);flex:none;transition:transform .3s ease;
+}
+.note.is-open .note__icon{transform:rotate(45deg);}
+.note.is-open .note__btn{color:var(--navy-500);}
+.note__body{
+  max-height:0;overflow:hidden;transition:max-height .38s ease;
+  color:var(--text-muted);font-size:15px;
+}
+.note.is-open .note__body{max-height:420px;}
+.note__inner{padding:0 4px 26px;}
+
+/* ==========================================================================
+   9. 页脚 / 联系
+   ========================================================================== */
+.footer{
+  background:var(--navy-900);color:#cfd9e4;
+  padding:80px 0 44px;text-align:center;
+}
+.footer__title{color:#fff;font-size:clamp(24px,4vw,32px);margin-bottom:14px;}
+.footer__text{color:#9fb0c2;margin-bottom:26px;}
+.footer__mail{
+  display:inline-block;color:#fff;text-decoration:none;
+  font-size:clamp(17px,2.6vw,21px);font-weight:500;
+  border-bottom:1px solid rgba(255,255,255,.35);padding-bottom:4px;
+  transition:border-color .25s ease,color .25s ease;
+}
+.footer__mail:hover{border-bottom-color:#fff;color:var(--navy-300);}
+.footer__hint{margin-top:22px;font-size:14px;color:#8ba0b5;}
+.footer__copy{margin-top:46px;padding-top:22px;border-top:1px solid rgba(255,255,255,.1);
+  font-size:12.5px;color:#6f8399;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+
+/* ==========================================================================
+   10. 滚动进场动画（无 JS 时内容直接可见，不会白屏）
+   ========================================================================== */
+.reveal{opacity:1;}
+html.js .reveal{opacity:0;transform:translateY(18px);
+  transition:opacity .7s ease,transform .7s ease;}
+html.js .reveal.is-in{opacity:1;transform:none;}
+
+/* ==========================================================================
+   11. 响应式
+   ========================================================================== */
+@media (max-width:640px){
+  .section{padding:72px 0;}
+  .hero__sub{max-width:none;}
+  .nav__links{gap:20px;font-size:14px;}
+  .nav__brand{font-size:15px;}
+  .timeline{padding-left:24px;}
+  .tl-item::before{left:-24px;}
+  .note__btn{flex-wrap:wrap;gap:6px 14px;}
+  .note__name{flex-basis:100%;order:3;}
+}
+
+/* 尊重系统「减少动画」设置 */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  *,*::before,*::after{animation:none!important;transition:none!important;}
+  html.js .reveal{opacity:1;transform:none;}
+}
+</style>
+</head>
+
+<body>
+
+<!-- ======================================================================
+     顶部固定导航：改链接文字 / 增删项，直接改 <a> 即可
+     href 必须与对应区块的 id 一致
+     ====================================================================== -->
+<header class="nav" id="nav">
+  <div class="wrap nav__inner">
+    <a class="nav__brand" href="#top">沈江 · 个人记录</a>
+    <nav class="nav__links" aria-label="主导航">
+      <a class="nav__link" href="#about">关于我</a>
+      <a class="nav__link" href="#timeline">成长时间线</a>
+      <a class="nav__link" href="#works">作品与折腾</a>
+      <a class="nav__link" href="#notes">随笔</a>
+      <a class="nav__link" href="#contact">联系</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ====================================================================
+       1. 首屏：大标题 + 副标题 + 向下箭头
+       ==================================================================== -->
+  <section class="hero">
+    <div class="wrap">
+      <p class="hero__kicker">Personal Log</p>
+      <h1 class="hero__title">沈江<br><span class="thin">/ 个人记录</span></h1>
+      <p class="hero__sub">土木工程师 → AI 解决方案探索者，记录转型路上的折腾与思考。</p>
+      <div class="hero__rule"></div>
+    </div>
+    <a class="hero__scroll" href="#about">
+      <span>向下看</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 5v14M5 12l7 7 7-7"/>
+      </svg>
+    </a>
+  </section>
+
+  <!-- ====================================================================
+       2. 关于我  —— 正文段落直接改 <p> 里的文字即可
+       ==================================================================== -->
+  <section class="section section--alt" id="about">
+    <div class="wrap about">
+      <div class="reveal">
+        <p class="section-en">About</p>
+        <h2 class="section-title">关于我</h2>
+        <div class="about__text">
+          <p>我是沈江，1992 年生，湖南湘潭人。做工程这行，一干就是十年。</p>
+          <p>前几年在现场管施工，后来转到商务和预结算——图纸、清单、签证、结算单，跟数字打交道的时间其实比跟人打交道的多。后来慢慢发现，这个岗位真正值钱的不是算得多准，而是<strong>能不能把一个模糊的问题拆清楚</strong>。这大概是我后来对 AI 着迷的起点。</p>
+          <p>2024 年开始自学大模型，从提示词、检索增强，一路摸到 Agent 和工作流落地。没有科班底子，也没人带，跌跌撞撞，但确实越学越上头。</p>
+          <p>现在在找 AI 商务解决方案方向的岗位，目标是解决方案经理。这个站点就是我给自己留的一本公开笔记：折腾过什么、学到了什么、哪里踩过坑，都写在这儿。</p>
+        </div>
+      </div>
+
+      <!-- 侧栏小卡：出生年份、坐标、经历这类关键词 -->
+      <aside class="facts reveal">
+        <h3>基本信息</h3>
+        <ul>
+          <li><b>出生年份</b><span>1992年</span></li>
+          <li><b>坐标</b><span>湖南 · 湘潭</span></li>
+          <li><b>行业年限</b><span>建筑工程 + 商务 10 年</span></li>
+          <li><b>现居方向</b><span>AI 技术 / 商务解决方案</span></li>
+          <li><b>正在找</b><span>解决方案经理岗</span></li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       3. 成长时间线  —— 复制一个 .tl-item 就能加新节点
+       ==================================================================== -->
+  <section class="section" id="timeline">
+    <div class="wrap">
+      <p class="section-en">Timeline</p>
+      <h2 class="section-title">成长时间线</h2>
+      <p class="section-lead">从施工现场到代码编辑器，节点不多，但每一步都算数。</p>
+
+      <div class="timeline">
+        <div class="tl-item reveal">
+          <div class="tl-year">2010 — 2014</div>
+          <h3 class="tl-title">本科 · 土木工程</h3>
+          <p class="tl-desc">结构力学、施工组织都学过，当时没想过这行会陪我走这么久。</p>
+        </div>
+
+        <div class="tl-item reveal">
+          <div class="tl-year">2014 — 2017</div>
+          <h3 class="tl-title">一线 · 施工管理</h3>
+          <p class="tl-desc">跟着项目跑，学会了看图、盯现场、协调班组——工程思维的底子就在这几年打的。</p>
+        </div>
+
+        <div class="tl-item reveal">
+          <div class="tl-year">2017 — 2019</div>
+          <h3 class="tl-title">转向 · 技术深化设计</h3>
+          <p class="tl-desc">从「把活干完」到「先想清楚怎么干」，开始啃规范、抠节点、抠做法。</p>
+        </div>
+
+        <div class="tl-item reveal">
+          <div class="tl-year">2019 — 2024</div>
+          <h3 class="tl-title">商务 · 预结算与成本</h3>
+          <p class="tl-desc">清单组价、签证变更、结算对账。数字上的严谨，成了我后来的底色。</p>
+        </div>
+
+        <div class="tl-item reveal">
+          <div class="tl-year">2024</div>
+          <h3 class="tl-title">起步 · 自学大模型</h3>
+          <p class="tl-desc">从提示词工程和检索增强开始，一步步摸到 Agent 与工作流落地。</p>
+        </div>
+
+        <div class="tl-item tl-item--now reveal">
+          <div class="tl-year">现在</div>
+          <h3 class="tl-title">求职 · AI 解决方案经理</h3>
+          <p class="tl-desc">想找一个既懂真实业务场景、又能把 AI 用进去的位置。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       4. 作品与折腾 —— 以后替换成真项目：改标题、描述、tag，
+          并可把 <a class="card__link"> 加上真实链接
+       ==================================================================== -->
+  <section class="section section--alt" id="works">
+    <div class="wrap">
+      <p class="section-en">Works</p>
+      <h2 class="section-title">作品与折腾</h2>
+      <p class="section-lead">大多是小工具和半成品，但每一个都是从「我自己被这个问题烦到」开始的。</p>
+
+      <div class="cards">
+        <article class="card reveal">
+          <div class="card__no">01</div>
+          <h3 class="card__title">工程投标智能自查助手</h3>
+          <p class="card__desc">上传招标文件，自动比对资质、业绩、人员配置和废标条款，输出风险清单。</p>
+          <span class="card__tag">即将更新</span>
+        </article>
+
+        <article class="card reveal">
+          <div class="card__no">02</div>
+          <h3 class="card__title">清单 / 预结算 AI 校对工具</h3>
+          <p class="card__desc">用大模型做工程量清单与计价文件的交叉核对，减少人工翻错。</p>
+          <span class="card__tag">即将更新</span>
+        </article>
+
+        <article class="card reveal">
+          <div class="card__no">03</div>
+          <h3 class="card__title">AI 编码工具实测</h3>
+          <p class="card__desc">把日常的重复劳动交给 AI 编程助手，记录哪些活真能省、哪些是伪需求。</p>
+          <span class="card__tag">即将更新</span>
+        </article>
+
+        <article class="card reveal">
+          <div class="card__no">04</div>
+          <h3 class="card__title">学习笔记</h3>
+          <p class="card__desc">提示词工程、RAG、Agent、工作流编排，用自己的话重写一遍的笔记。</p>
+          <span class="card__tag">即将更新</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       5. 随笔 —— 复制一个 <li class="note"> 就能加一条
+          .note__body 内是正文占位，换成真实内容即可
+       ==================================================================== -->
+  <section class="section" id="notes">
+    <div class="wrap">
+      <p class="section-en">Notes</p>
+      <h2 class="section-title">随笔</h2>
+      <p class="section-lead">不成篇的想法，先记下来。</p>
+
+      <ul class="notes">
+        <li class="note reveal">
+          <button class="note__btn" type="button" aria-expanded="false">
+            <span class="note__date">2026</span>
+            <span class="note__name">为什么土木人适合做 AI 落地</span>
+            <svg class="note__icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <div class="note__body">
+            <div class="note__inner">
+              行业里的问题从来不是「不够聪明」，而是被拆得太碎、散在几十份文档里。土木出身的人，天然习惯按流程、按清单、按条款去归类，这恰好是 AI 落地最缺的能力：把模糊需求翻译成可执行流程。（正文占位，以后替换成真实内容。）
+            </div>
+          </div>
+        </li>
+
+        <li class="note reveal">
+          <button class="note__btn" type="button" aria-expanded="false">
+            <span class="note__date">2026</span>
+            <span class="note__name">第一次用 AI 写代码</span>
+            <svg class="note__icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <div class="note__body">
+            <div class="note__inner">
+              写了个小工具把表格里的重复项标红，第一次跑通的时候有点上头——原来不用手写完所有代码，只要能说清「要什么」，就能剩下大半的时间。（正文占位，以后替换成真实内容。）
+            </div>
+          </div>
+        </li>
+
+        <li class="note reveal">
+          <button class="note__btn" type="button" aria-expanded="false">
+            <span class="note__date">2026</span>
+            <span class="note__name">给非科班的人的一份踩坑清单</span>
+            <svg class="note__icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </button>
+          <div class="note__body">
+            <div class="note__inner">
+              一上来别急着追前沿名词。先花两周把手上的活用 AI 跑通一遍，弄清楚它在哪儿靠得住、在哪儿会瞎编，再回头看框架，你会省下很多热情。（正文占位，以后替换成真实内容。）
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       6. 联系 / 页脚  —— 邮箱就这一处
+       ==================================================================== -->
+  <footer class="footer" id="contact">
+    <div class="wrap">
+      <h2 class="footer__title">欢迎交流</h2>
+      <p class="footer__text">聊转型、聊 AI 落地、聊工程背景的人，随时找我。</p>
+      <a class="footer__mail" href="mailto:371323904@qq.com">371323904@qq.com</a>
+      <p class="footer__hint">如果手上有具体的业务场景，更欢迎直接发我 —— 我最想看的是真问题。</p>
+      <div class="footer__copy">
+        <span>© <span id="year">2026</span> 沈江 · 个人记录</span>
+        <span>湘 · 湘潭</span>
+      </div>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+/* ==========================================================================
+   脚本：三个功能，都做了降级处理，禁用 JS 也能正常阅读
+   1) 标记支持 JS（给滚动动画用）
+   2) 导航吸顶阴影 + 当前区块高亮
+   3) 随笔展开 / 收起
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  document.documentElement.classList.add('js');
+
+  /* ---------- 页脚年份自动更新 ---------- */
+  var yearEl = document.getElementById('year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  /* ---------- 1. 滚动进场动画 ---------- */
+  var revealEls = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && revealEls.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(function (el) { io.observe(el); });
+  } else {
+    revealEls.forEach(function (el) { el.classList.add('is-in'); });
+  }
+
+  /* ---------- 2. 导航吸顶 + 高亮当前区块 ---------- */
+  var nav = document.getElementById('nav');
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav__link'));
+  var sections = links
+    .map(function (a) { return document.querySelector(a.getAttribute('href')); })
+    .filter(Boolean);
+
+  function onScroll() {
+    var y = window.scrollY || document.documentElement.scrollTop;
+    if (nav) nav.classList.toggle('is-stuck', y > 8);
+
+    var line = y + (nav ? nav.offsetHeight : 0) + 40;   // 当前视口基准线
+    var active = -1;
+    sections.forEach(function (sec, i) { if (sec.offsetTop <= line) active = i; });
+    links.forEach(function (a, i) { a.classList.toggle('is-active', i === active); });
+  }
+  var ticking = false;
+  window.addEventListener('scroll', function () {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () { onScroll(); ticking = false; });
+  }, { passive: true });
+  onScroll();
+
+  /* ---------- 3. 随笔展开 / 收起 ---------- */
+  document.querySelectorAll('.note').forEach(function (note) {
+    var btn = note.querySelector('.note__btn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var open = note.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
