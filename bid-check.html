@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工程投标智能自查助手</title>
+<meta name="description" content="纯前端工程量清单 / 投标条目自动分类汇总与必含项自查工具。">
+<style>
+/* ==========================================================================
+   1. 设计变量（配色/间距统一在这里改）
+   ========================================================================== */
+:root{
+  --navy-900:#0d1f38;
+  --navy-700:#153253;
+  --navy-500:#2b5586;
+  --navy-300:#7c98b8;
+  --cream-50:#fbfaf6;
+  --cream-100:#f3f1ea;
+  --line:#e2dfd4;
+  --text:#22303f;
+  --muted:#5c6b7a;
+  --red:#b8352f;
+  --red-bg:#fdecea;
+  --green:#1f6b45;
+  --green-bg:#e9f4ee;
+  --amber:#9a6b13;
+  --amber-bg:#fdf4e2;
+  --font:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --radius:12px;
+  --maxw:1080px;
+}
+
+*,*::before,*::after{box-sizing:border-box;}
+body{
+  margin:0;font-family:var(--font);color:var(--text);background:var(--cream-50);
+  line-height:1.8;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0;font-weight:600;line-height:1.4;color:var(--navy-700);}
+p{margin:0;}
+ul{margin:0;padding:0;list-style:none;}
+button{font-family:inherit;cursor:pointer;}
+.wrap{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 20px;}
+
+/* ==========================================================================
+   2. 页头
+   ========================================================================== */
+.topbar{background:var(--navy-900);color:#cfd9e4;padding:44px 0 40px;}
+.topbar h1{color:#fff;font-size:clamp(23px,4.2vw,32px);}
+.topbar p{color:#9fb0c2;margin-top:10px;font-size:15px;max-width:60ch;}
+.badge{
+  display:inline-block;margin-bottom:14px;font-size:12px;letter-spacing:.12em;
+  color:#8fb6e0;border:1px solid rgba(143,182,224,.35);border-radius:999px;padding:3px 11px;
+}
+
+/* ==========================================================================
+   3. 区块通用
+   ========================================================================== */
+.section{padding:44px 0;}
+.section__title{font-size:20px;margin-bottom:6px;}
+.section__hint{color:var(--muted);font-size:14px;margin-bottom:18px;}
+.divider{border-top:1px solid var(--line);}
+
+/* ==========================================================================
+   4. 输入区
+   ========================================================================== */
+.panel{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px;box-shadow:0 2px 10px rgba(13,31,56,.03);
+}
+.textarea{
+  width:100%;min-height:250px;resize:vertical;
+  font-family:ui-monospace,Consolas,"Courier New","PingFang SC",monospace;
+  font-size:15px;line-height:1.9;color:var(--text);
+  padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--cream-50);
+}
+.textarea:focus{outline:none;border-color:var(--navy-500);background:#fff;}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px;}
+.btn{
+  border:1px solid var(--line);background:#fff;color:var(--navy-700);
+  border-radius:9px;padding:9px 16px;font-size:14.5px;transition:.2s ease;
+}
+.btn:hover{border-color:var(--navy-300);background:var(--cream-100);}
+.btn--primary{background:var(--navy-700);border-color:var(--navy-700);color:#fff;font-size:16px;padding:11px 26px;}
+.btn--primary:hover{background:var(--navy-500);border-color:var(--navy-500);}
+.btn--ghost{border-style:dashed;color:var(--muted);}
+.spacer{flex:1;}
+.counter{color:var(--navy-300);font-size:13.5px;}
+
+/* ==========================================================================
+   5. 统计卡片
+   ========================================================================== */
+.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+.stat{
+  background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;
+}
+.stat__num{font-size:27px;font-weight:700;color:var(--navy-700);line-height:1.2;font-variant-numeric:tabular-nums;}
+.stat__label{font-size:13px;color:var(--muted);margin-top:2px;}
+.stat--warn{border-color:rgba(184,53,47,.35);background:var(--red-bg);}
+.stat--warn .stat__num{color:var(--red);}
+.stat--ok .stat__num{color:var(--green);}
+
+/* ==========================================================================
+   6. 警示横幅
+   ========================================================================== */
+.alert{
+  border-radius:var(--radius);padding:16px 18px;margin-top:18px;font-size:15px;
+  display:flex;gap:12px;align-items:flex-start;
+}
+.alert__icon{flex:none;font-size:18px;line-height:1.5;}
+.alert--warn{background:var(--red-bg);border:1px solid rgba(184,53,47,.3);color:#8f2b26;}
+.alert--ok{background:var(--green-bg);border:1px solid rgba(31,107,69,.25);color:#1b5b3b;}
+.alert b{font-weight:600;}
+
+/* ==========================================================================
+   7. 表格
+   ========================================================================== */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--radius);background:#fff;}
+table{width:100%;border-collapse:collapse;min-width:660px;font-size:14.5px;}
+thead th{
+  background:var(--cream-100);color:var(--navy-700);text-align:left;
+  font-weight:600;font-size:13px;letter-spacing:.06em;padding:12px 16px;
+  position:sticky;top:0;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+tbody td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top;}
+tbody tr:last-child td{border-bottom:0;}
+tbody tr:hover{background:#fcfcfa;}
+.num{font-variant-numeric:tabular-nums;font-weight:700;color:var(--navy-700);white-space:nowrap;}
+.bar{height:6px;background:var(--cream-100);border-radius:3px;overflow:hidden;margin-top:7px;min-width:90px;}
+.bar__fill{height:100%;background:var(--navy-500);border-radius:3px;}
+.cat-name{font-weight:600;color:var(--navy-700);white-space:nowrap;}
+.sample{color:var(--muted);font-size:13.5px;}
+.sample li{margin:2px 0;}
+.more-btn{background:none;border:0;color:var(--navy-500);font-size:13px;padding:4px 0;text-decoration:underline;}
+.empty{color:var(--navy-300);font-size:14px;}
+
+/* ==========================================================================
+   8. 必含项检查清单
+   ========================================================================== */
+.chk-group{margin-bottom:26px;}
+.chk-group__head{
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;
+  font-weight:600;color:var(--navy-700);font-size:15.5px;
+}
+.chk-group__count{font-size:12.5px;color:var(--muted);font-weight:400;}
+.chk-count{font-size:12.5px;font-weight:400;}
+.chk-list{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));}
+.chk{
+  display:flex;gap:11px;align-items:flex-start;
+  background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;
+}
+.chk__mark{flex:none;width:19px;height:19px;border-radius:5px;font-size:12px;line-height:19px;text-align:center;margin-top:3px;font-weight:700;}
+.chk__body{flex:1;min-width:0;}
+.chk__name{font-size:14.5px;font-weight:500;color:var(--navy-700);}
+.chk__hint{font-size:13px;color:var(--muted);line-height:1.65;}
+.chk__hit{font-size:12px;color:var(--green);margin-top:3px;}
+.chk__hit code{background:var(--green-bg);border-radius:4px;padding:1px 6px;font-family:inherit;}
+/* 已包含：绿色小勾 */
+.chk--ok{border-color:rgba(31,107,69,.25);background:var(--green-bg);}
+.chk--ok .chk__mark{background:var(--green);color:#fff;}
+.chk--ok .chk__name{color:#1b5b3b;}
+/* 缺失：红色高亮警告（重点样式） */
+.chk--miss{border-color:rgba(184,53,47,.5);background:var(--red-bg);box-shadow:inset 3px 0 0 var(--red);}
+.chk--miss .chk__mark{background:var(--red);color:#fff;}
+.chk--miss .chk__name{color:#8f2b26;}
+.chk--miss .chk__hint{color:#a4443e;}
+
+/* ==========================================================================
+   9. 未归类 / 兼类
+   ========================================================================== */
+details.box{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;}
+details.box + details.box{margin-top:10px;}
+details.box summary{cursor:pointer;font-weight:600;color:var(--navy-700);font-size:15px;list-style:none;}
+details.box summary::-webkit-details-marker{display:none;}
+details.box summary::before{content:"▸ ";color:var(--navy-300);}
+details.box[open] summary::before{content:"▾ ";}
+details.box ul{margin-top:12px;max-height:260px;overflow:auto;}
+details.box li{padding:5px 0;border-bottom:1px dashed var(--line);font-size:14px;color:var(--muted);}
+details.box li:last-child{border-bottom:0;}
+details.box li b{color:var(--navy-700);font-weight:600;}
+
+/* ==========================================================================
+   10. 关键词设置（可折叠）
+   ========================================================================== */
+.kw-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-top:14px;}
+.kw-item label{display:block;font-size:13.5px;font-weight:600;color:var(--navy-700);margin-bottom:5px;}
+.kw-item input{
+  width:100%;font:inherit;font-size:13.5px;padding:8px 11px;
+  border:1px solid var(--line);border-radius:8px;background:var(--cream-50);color:var(--text);
+}
+.kw-item input:focus{outline:none;border-color:var(--navy-500);background:#fff;}
+
+/* ==========================================================================
+   11. 页脚
+   ========================================================================== */
+.foot{background:var(--navy-900);color:#8ba0b5;padding:34px 0;margin-top:20px;font-size:13.5px;}
+.foot span{color:#cfd9e4;}
+
+/* ==========================================================================
+   12. 响应式
+   ========================================================================== */
+@media (max-width:640px){
+  .wrap{padding:0 14px;}
+  .section{padding:32px 0;}
+  .panel{padding:14px;}
+  .textarea{min-height:200px;font-size:14px;}
+  .btn--primary{width:100%;}
+  .chk-list{grid-template-columns:1fr;}
+  .stat__num{font-size:24px;}
+}
+/* 打印报告时隐藏操作元素 */
+@media print{
+  .no-print{display:none!important;}
+  body{background:#fff;}
+  .panel,.stat,.table-scroll,details.box{box-shadow:none;}
+  details.box[open] ul{max-height:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ====================== 页头 ====================== -->
+<header class="topbar">
+  <div class="wrap">
+    <span class="badge">纯本地运行 · 不上传任何数据</span>
+    <h1>工程投标智能自查助手</h1>
+    <p>把工程量清单或投标条目整段粘进来，自动按专业分类汇总，并对照「常见必含项检查清单」标出可能缺失的项，避免报价和投标文件漏项。</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ==================== 1. 输入区 ==================== -->
+  <section class="section">
+    <h2 class="section__title">① 粘贴清单</h2>
+    <p class="section__hint">每行一项，格式随意，例如：<code>3#楼 混凝土 C30 120m³</code>　<code>屋面防水卷材 3mm SBS</code>　<code>1#楼 钢筋 HRB400 直径12</code>。也支持从 Excel 直接复制整列。</p>
+
+    <div class="panel">
+      <label class="section__hint" for="input" style="display:block;margin-bottom:8px;">清单内容（每行一条）</label>
+      <textarea id="input" class="textarea" spellcheck="false" placeholder="3#楼 混凝土 C30 120m³&#10;1#楼 钢筋 HRB400 Φ12 8.6t&#10;屋面 防水卷材 SBS 3mm 860m²&#10;2#楼 给排水 立管 DN110&#10;……"></textarea>
+
+      <div class="toolbar no-print">
+        <button class="btn btn--primary" id="btnRun">开始分析</button>
+        <button class="btn" id="btnSample">载入示例</button>
+        <button class="btn" id="btnImport">导入 txt</button>
+        <button class="btn" id="btnClear">清空</button>
+        <input type="file" id="fileInput" accept=".txt,.csv,.tsv,.md" hidden>
+        <span class="spacer"></span>
+        <span class="counter" id="counter">0 条</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2. 分析结果 ==================== -->
+  <section class="section divider" id="results" style="display:none;">
+
+    <!-- 统计概览 -->
+    <h2 class="section__title">② 分类汇总</h2>
+    <div class="stats" id="stats"></div>
+
+    <!-- 缺失警示横幅 -->
+    <div id="alertBox"></div>
+
+    <!-- 分类明细表 -->
+    <h3 style="margin-top:34px;">各专业条目分布</h3>
+    <p class="section__hint">点「查看全部」可展开该类所有条目。一条内容若同时命中多个关键词，会在多个分类中出现。</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th style="width:150px;">专业分类</th><th style="width:120px;">条目数 / 占比</th><th>条目摘录</th></tr>
+        </thead>
+        <tbody id="catBody"></tbody>
+      </table>
+    </div>
+
+    <!-- 未归类 / 兼类 -->
+    <div style="margin-top:16px;">
+      <details class="box" id="multiBox" hidden>
+        <summary id="multiTitle">同时命中多个分类的条目</summary>
+        <ul id="multiList"></ul>
+      </details>
+      <details class="box" id="noneBox" hidden>
+        <summary id="noneTitle">未识别（未命中任何关键词）</summary>
+        <ul id="noneList"></ul>
+      </details>
+    </div>
+
+    <!-- 必含项检查清单 -->
+    <div class="divider" style="margin-top:38px;padding-top:34px;">
+      <h2 class="section__title">③ 常见必含项检查清单</h2>
+      <p class="section__hint">
+        依据你粘贴的内容做<b>关键词初筛</b>：<span style="color:var(--green)">绿色＝已检索到</span>，
+        <span style="color:var(--red)">红色＝未检索到，可能漏项</span>。结果仅供提示，最终请对照招标文件和图纸人工复核。
+      </p>
+      <div id="checkList"></div>
+    </div>
+
+    <!-- 导出 -->
+    <div class="toolbar no-print" style="margin-top:26px;">
+      <button class="btn" id="btnCopy">复制分析报告</button>
+      <button class="btn" id="btnDownload">下载报告 (.txt)</button>
+      <button class="btn btn--ghost" id="btnPrint">打印 / 存为 PDF</button>
+    </div>
+  </section>
+
+  <!-- ==================== 3. 关键词设置 ==================== -->
+  <section class="section divider no-print">
+    <details class="box">
+      <summary>高级设置：自定义各分类关键词</summary>
+      <p class="section__hint" style="margin-top:10px;">
+        用「顿号、逗号或空格」分隔。改完点「保存关键词」立即生效（保存在本机浏览器，下次打开还在）。
+      </p>
+      <div class="kw-grid" id="kwGrid"></div>
+      <div class="toolbar">
+        <button class="btn btn--primary" id="btnSaveKw" style="font-size:14.5px;padding:9px 20px;">保存关键词</button>
+        <button class="btn" id="btnResetKw">恢复默认关键词</button>
+      </div>
+    </details>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">纯 HTML/CSS/JS 单文件实现，数据只存在你自己的浏览器里，不上传服务器。　·　<span>工程投标智能自查助手</span></div>
+</footer>
+
+<script>
+/* ==========================================================================
+   A. 配置数据（可改部分都集中在这三块里）
+   --------------------------------------------------------------------------
+   1) CATEGORIES  专业分类 + 触发关键词（用于自动归类）
+   2) CHECKLIST   常见必含项检查清单（用于缺失预警）
+   3) SAMPLE      演示用示例清单
+   ========================================================================== */
+
+/* ---- 1) 专业分类：keywords 是触发词，命中任意一个即归入该类 ---- */
+const CATEGORIES = [
+  { id:'soil',      name:'土方 / 地基',   keywords:['土方','挖土','开挖','回填','夯实','素土','级配砂石','场地平整','支护','基坑','降水','井点','桩基','灌注桩','预制桩','外运','弃土','运距','放线'] },
+  { id:'masonry',   name:'砌体 / 墙体',   keywords:['砌体','砌筑','砖砌','加气块','轻骨料','砌块','MU','构造柱','过梁','拉结筋','植筋','填充墙'] },
+  { id:'concrete',  name:'混凝土',        keywords:['混凝土','砼','现浇','C25','C30','C35','C40','C50','垫层','承台','筏板','桩承台','构造柱','圈梁','楼梯','后浇带','防水混凝土'] },
+  { id:'rebar',     name:'钢筋',          keywords:['钢筋','螺纹钢','HRB','HPB','箍筋','马凳筋','植筋','直螺纹','套筒','焊接','后置钢筋','拉结筋','Φ','Ф'] },
+  { id:'formwork',  name:'模板 / 支撑',   keywords:['模板','支模','木模','铝模','竹胶板','满堂架','支撑','超高','梁板','剪力墙'] },
+  { id:'scaffold',  name:'脚手架 / 防护', keywords:['脚手架','外架','内架','落地式','悬挑','双排架','安全网','防护','封闭','挑网','卸料平台'] },
+  { id:'waterproof',name:'防水 / 保温',   keywords:['防水','卷材','SBS','涂膜','堵漏','渗漏','保温','岩棉','挤塑板','聚氨酯','闭水','找坡','隔热'] },
+  { id:'plaster',   name:'抹灰 / 瓷砖',   keywords:['抹灰','砂浆','找平','地砖','地面砖','墙砖','瓷砖','石材','腻子','涂料','乳胶漆','面砖','贴砖'] },
+  { id:'electric',  name:'电气',          keywords:['电气','配电箱','配电柜','电表箱','电线','电缆','桥架','线管','穿管','灯具','灯','插座','开关','面板','防雷','接地','等电位','弱电','智能化','监控','门禁'] },
+  { id:'plumbing',  name:'给排水 / 消防', keywords:['给排水','给水','排水','污水','雨水','PPR','镀锌','UPVC','水表','洁具','坐便器','台盆','面盆','阀门','法兰','消防','消火栓','喷淋','水泵','水泵接合器','DN75','DN110','DN160'] },
+  { id:'decoration',name:'装饰装修',      keywords:['吊顶','门窗','防火门','栏杆','扶手','百叶','幕墙','干挂','成品保护','保洁','装饰','装修','美缝'] },
+  { id:'measure',   name:'措施 / 总包服务',keywords:['措施','安全文明','文明施工','垂直运输','塔吊','施工电梯','吊篮','临水','临电','临时用电','进出场','安拆','冬雨季','暂列','暂估','甲供','甲指','检测','试验','验收','见证'] },
+];
+
+/* ---- 2) 必含项检查清单：keys 为「任一命中即视为已包含」的关键词 ---- */
+const CHECKLIST = [
+  // —— 土方 / 地基 ——
+  { cat:'soil', name:'场地平整', keys:['场地平整','平整','挖方'], hint:'常见首项，先确认是否含外运及运距。' },
+  { cat:'soil', name:'土方开挖', keys:['土方开挖','挖土','土方挖'], hint:'需注明放坡与工作面，土方量极易漏算。' },
+  { cat:'soil', name:'基坑支护', keys:['支护','围护','基坑'], hint:'支护形式与安全措施通常单独列项。' },
+  { cat:'soil', name:'土方回填', keys:['回填','回填土'], hint:'写清回填材料（素土/级配砂石）与压实系数。' },
+  { cat:'soil', name:'桩基工程', keys:['灌注桩','预制桩','桩基','桩'], hint:'含试桩、检测、桩头处理，检测费常被漏。' },
+  { cat:'soil', name:'基坑降排水', keys:['降水','井点','排水'], hint:'降水期长短直接影响造价，须写明。' },
+  { cat:'soil', name:'土方外运', keys:['外运','弃土','运距'], hint:'运距是唯一计价变量，务必明确。' },
+
+  // —— 砌体 / 墙体 ——
+  { cat:'masonry', name:'砖砌体', keys:['砖砌','砌体','MU'], hint:'砖标号与砂浆强度要写清。' },
+  { cat:'masonry', name:'加气块 / 砌块墙', keys:['加气','砌块','轻骨料'], hint:'注意厚度，与抹灰做法配套计取。' },
+  { cat:'masonry', name:'构造柱', keys:['构造柱'], hint:'含马牙槎、模板、钢筋，常被分散到混凝土项。' },
+  { cat:'masonry', name:'门窗洞口过梁', keys:['过梁'], hint:'随砌体一起报，容易漏。' },
+  { cat:'masonry', name:'墙体拉结筋 / 植筋', keys:['拉结','植筋'], hint:'抗震设防地区验收必查项。' },
+
+  // —— 混凝土 ——
+  { cat:'concrete', name:'垫层混凝土', keys:['垫层'], hint:'素砼垫层经常被忽略。' },
+  { cat:'concrete', name:'基础混凝土', keys:['基础','承台','筏板','垫层','桩承台'], hint:'造价大头，逐个基础类型核对。' },
+  { cat:'concrete', name:'主体结构混凝土', keys:['主体','结构混凝土','现浇'], hint:'按层高、构件部位分别列项。' },
+  { cat:'concrete', name:'构造柱 / 圈梁混凝土', keys:['构造柱','圈梁'], hint:'构件名称写全，别只写「其他混凝土」。' },
+  { cat:'concrete', name:'楼梯混凝土', keys:['楼梯'], hint:'含梯段与休息平台。' },
+  { cat:'concrete', name:'后浇带混凝土', keys:['后浇带'], hint:'含膨胀剂与二次浇筑措施费。' },
+
+  // —— 钢筋 ——
+  { cat:'rebar', name:'基础钢筋', keys:['钢筋','基础','承台','筏板'], hint:'注意钢筋级别（HRB400）与直径。' },
+  { cat:'rebar', name:'主体结构钢筋', keys:['钢筋','主体','梁','板','柱'], hint:'注意箍筋加密区长度。' },
+  { cat:'rebar', name:'钢筋连接', keys:['直螺纹','套筒','焊接','连接'], hint:'按米还是按吨计价需统一口径。' },
+  { cat:'rebar', name:'植筋 / 后置钢筋', keys:['植筋','后置'], hint:'按根还是按米，容易在结算时争议。' },
+  { cat:'rebar', name:'马凳筋 / 垫块', keys:['马凳','垫块'], hint:'常被漏，注意是否已计入措施费。' },
+
+  // —— 模板 / 支撑 ——
+  { cat:'formwork', name:'基础模板', keys:['模板','基础','承台','垫层'], hint:'确认是否含垫层模板。' },
+  { cat:'formwork', name:'主体模板', keys:['模板','主体','梁板','剪力墙'], hint:'按建筑面积还是构件接触面积计价需统一。' },
+  { cat:'formwork', name:'模板支撑 / 超高架体', keys:['支撑','超高','满堂'], hint:'超高部分单独计取。' },
+  { cat:'formwork', name:'楼梯 / 异形构件模板', keys:['模板','楼梯','飘窗','异形'], hint:'异形部位最容易漏项。' },
+
+  // —— 脚手架 / 防护 ——
+  { cat:'scaffold', name:'落地式钢管脚手架', keys:['落地式','落地脚手架','外架','双排'], hint:'明确起点标高与搭设方式。' },
+  { cat:'scaffold', name:'悬挑式脚手架', keys:['悬挑'], hint:'悬挑梁费用常需单列。' },
+  { cat:'scaffold', name:'砌筑 / 室内装修脚手架', keys:['砌筑脚手架','室内脚手架','装修脚手架'], hint:'与外架分开计，别并成一项。' },
+  { cat:'scaffold', name:'满堂脚手架', keys:['满堂'], hint:'通常按措施项目计取。' },
+  { cat:'scaffold', name:'安全网 / 防护封闭', keys:['安全网','防护','封闭','挑网'], hint:'属安全文明施工费，避免重复计取。' },
+
+  // —— 防水 / 保温 ——
+  { cat:'waterproof', name:'地下室防水', keys:['地下室','底板','防水'], hint:'含底板、外墙、后浇带细部。' },
+  { cat:'waterproof', name:'屋面防水', keys:['屋面','防水卷材','SBS'], hint:'注意找坡、保温、隔热是否都含。' },
+  { cat:'waterproof', name:'卫生间防水', keys:['卫生间','厕所','浴室'], hint:'含闭水试验费用。' },
+  { cat:'waterproof', name:'外墙防水 / 渗漏处理', keys:['外墙防水','渗漏','堵漏'], hint:'质保期与责任划分要写明。' },
+  { cat:'waterproof', name:'保温隔音', keys:['保温','隔音','岩棉','挤塑板'], hint:'防火等级需注明。' },
+
+  // —— 抹灰 / 瓷砖 ——
+  { cat:'plaster', name:'内墙抹灰', keys:['内墙抹灰','抹灰'], hint:'注意砂浆配合比与厚度。' },
+  { cat:'plaster', name:'外墙抹灰 / 保温砂浆', keys:['外墙抹灰','保温砂浆'], hint:'确认与外墙保温是否重复计价。' },
+  { cat:'plaster', name:'楼地面找平', keys:['找平','地面'], hint:'区分找平层与面层。' },
+  { cat:'plaster', name:'地面砖铺贴', keys:['地砖','地面砖'], hint:'注意规格与损耗率。' },
+  { cat:'plaster', name:'墙面瓷砖 / 石材', keys:['瓷砖','墙砖','石材'], hint:'干挂与湿贴造价差异大。' },
+  { cat:'plaster', name:'腻子 / 乳胶漆', keys:['腻子','涂料','乳胶漆'], hint:'含基层处理才算完整。' },
+
+  // —— 电气 ——
+  { cat:'electric', name:'配电箱 / 柜', keys:['配电箱','配电柜','电表箱'], hint:'进线箱是否含电缆敷设要写清。' },
+  { cat:'electric', name:'电线电缆敷设', keys:['电缆','电线','敷设'], hint:'穿管与桥架是否另计需明确。' },
+  { cat:'electric', name:'桥架 / 线管', keys:['桥架','线管','穿管'], hint:'材质与规格需明确。' },
+  { cat:'electric', name:'照明 / 开关插座面板', keys:['灯具','插座','开关','面板'], hint:'数量按图纸点位逐层核对。' },
+  { cat:'electric', name:'防雷接地 / 等电位', keys:['防雷','接地','等电位'], hint:'易漏项，验收必查。' },
+  { cat:'electric', name:'弱电 / 智能化', keys:['弱电','智能化','监控','门禁'], hint:'确认是否在本次招标范围内。' },
+
+  // —— 给排水 / 消防 ——
+  { cat:'plumbing', name:'给水管道', keys:['给水','PPR','镀锌','水表'], hint:'管材与压力等级需明确。' },
+  { cat:'plumbing', name:'排水管道', keys:['排水','UPVC','污水','雨水'], hint:'区分室内外与管径。' },
+  { cat:'plumbing', name:'消防栓与喷淋', keys:['消火栓','喷淋','消防','水泵接合器'], hint:'含调试联动，注意检测报告归属。' },
+  { cat:'plumbing', name:'卫生洁具', keys:['洁具','坐便器','台盆','面盆'], hint:'含安装辅材。' },
+  { cat:'plumbing', name:'阀门 / 管道支架', keys:['阀门','法兰','支架','吊架'], hint:'常以措施形式计入。' },
+  { cat:'plumbing', name:'管道保温', keys:['保温'], hint:'防结露与防冻保温要求不同。' },
+
+  // —— 装饰装修 ——
+  { cat:'decoration', name:'门窗 / 门锁', keys:['门','窗','门窗'], hint:'防火门与普通门价差大。' },
+  { cat:'decoration', name:'栏杆 / 扶手 / 百叶', keys:['栏杆','扶手','百叶'], hint:'不锈钢与铁艺差价明显。' },
+  { cat:'decoration', name:'幕墙 / 外墙装饰', keys:['幕墙','外墙装饰','干挂'], hint:'涉及资质与专项方案要求。' },
+  { cat:'decoration', name:'吊顶', keys:['吊顶'], hint:'注意龙骨与面板是否分开列项。' },
+
+  // —— 措施 / 总包服务 ——
+  { cat:'measure', name:'垂直运输 / 塔吊机械', keys:['塔吊','垂直运输','施工电梯','吊篮'], hint:'机械台班与进出场费分开列。' },
+  { cat:'measure', name:'临时用水用电', keys:['临水','临电','临时用电'], hint:'与现场实际条件核对。' },
+  { cat:'measure', name:'安全文明施工费', keys:['安全文明','文明施工','措施费'], hint:'按当地定额计取，不得漏。' },
+  { cat:'measure', name:'大型机械进出场', keys:['进出场','安拆'], hint:'明确运距与拆装次数。' },
+  { cat:'measure', name:'冬雨季施工增加费', keys:['冬雨季','雨季','冬季'], hint:'按工期与气候条件判断是否计取。' },
+  { cat:'measure', name:'暂列金额 / 暂估价', keys:['暂列','暂估','甲供','甲指'], hint:'划分清楚，避免后期扯皮。' },
+  { cat:'measure', name:'检测 / 试验 / 验收费', keys:['检测','试验','验收','见证'], hint:'明确谁承担、谁委托。' },
+];
+
+/* ---- 3) 示例清单：故意漏掉防水、装饰、措施几类，方便演示红色预警 ---- */
+const SAMPLE = `场地平整及场地移交 3200m²
+土方开挖 4800m³ 含外运运距8km
+基坑支护 桩径800灌注桩 156根
+桩基检测费 静载试验3根
+回填土夯实 2600m³ 级配砂石
+砖砌体 MU10多孔砖 240墙 860m²
+加气块砌体 200厚 320m²
+构造柱 C25 2400m³
+构造柱模板 2400m²
+圈梁 C25 180m³
+3#楼 混凝土 C30 120m³
+1#楼 混凝土 C35 主体结构 860m³
+2#楼 楼梯混凝土 C30 45m³
+垫层混凝土 C15 素砼 380m²
+1#楼 钢筋 HRB400 Φ12 8.6t
+2#楼 钢筋 HRB400 Φ20 26.4t
+钢筋直螺纹连接 Φ20 4200个
+马凳筋 Φ8 1.2t
+主体模板 复合板 5600m²
+满堂脚手架 支撑 3200m²
+落地式钢管脚手架 外架 4200m²
+悬挑脚手架 1-8层 1100m²
+安全网 封闭防护 1800m²
+砌筑脚手架 室内 900m²
+1#楼 给排水 立管 DN110 240m
+2#楼 排水管 UPVC DN160 380m
+给水管 PPR DN25 620m
+卫生洁具 坐便器 168套
+消火栓箱 消火栓 86套
+喷淋管道 DN65 1200m
+阀门法兰支架 管道支架 340套
+配电箱 照明配电箱 42台
+电线电缆敷设 YJV 4x25 2400m
+桥架 镀锌 380m²
+灯具 开关插座面板 2680套
+防雷接地等电位连接 1项`;
+
+const LS_TEXT = 'bidcheck.text';
+const LS_KW   = 'bidcheck.keywords';
+
+/* ==========================================================================
+   B. 状态与工具函数
+   ========================================================================== */
+let keywords = {};   // { 分类id: [关键词...] }  当前生效的关键词（含用户自定义）
+
+/** 取某分类当前关键词 */
+function catKeywords(id){
+  return (keywords[id] || []).filter(Boolean);
+}
+
+/** 归一化：转小写并去掉所有空白，便于宽松匹配 */
+function norm(s){
+  return String(s).toLowerCase().replace(/\s+/g,'');
+}
+
+/** 读取文本：优先用用户自定义，否则用默认 */
+function loadKeywords(){
+  try{
+    const raw = localStorage.getItem(LS_KW);
+    if (raw){
+      const obj = JSON.parse(raw);
+      // 校验：必须覆盖全部分类，避免旧数据缺字段
+      if (CATEGORIES.every(c => Array.isArray(obj[c.id]))) { keywords = obj; return; }
+    }
+  }catch(e){/* 忽略异常，用默认值 */}
+  resetKeywords(false);
+}
+
+/** 恢复默认关键词（可选择是否写入本地） */
+function resetKeywords(save){
+  keywords = {};
+  CATEGORIES.forEach(c => { keywords[c.id] = c.keywords.slice(); });
+  if (save !== false){ saveKeywords(); }
+  renderKwGrid();
+}
+
+/** 保存关键词到本地 */
+function saveKeywords(){
+  try{ localStorage.setItem(LS_KW, JSON.stringify(keywords)); }catch(e){}
+}
+
+/* ==========================================================================
+   C. 核心分析逻辑
+   ========================================================================== */
+
+/**
+ * 分析文本，返回统计结果对象
+ * @param {string} text 用户粘贴的清单
+ * @returns {object} { lines, total, cats, multi, none, checks }
+ */
+function analyze(text){
+  // 1) 拆行：每行一条，去掉空行
+  const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+  // 2) 逐行匹配关键词（去掉空白后匹配，容忍「给 水管」这类格式）
+  const rows = lines.map((line, idx) => {
+    const hay = norm(line);
+    const hits = [];
+    CATEGORIES.forEach(c => {
+      const kw = catKeywords(c.id);
+      const matched = kw.filter(k => hay.indexOf(norm(k)) !== -1);
+      if (matched.length) hits.push({ id:c.id, matched });
+    });
+    return { no:idx + 1, text:line, hits };
+  });
+
+  // 3) 按分类汇总
+  const cats = CATEGORIES.map(c => {
+    const items = rows.filter(r => r.hits.some(h => h.id === c.id));
+    return {
+      id:c.id,
+      name:c.name,
+      count:items.length,
+      items:items,
+      // 该类共命中多少个关键词，用于「查看全部」时的提示
+      ratio: rows.length ? Math.round(items.length / rows.length * 100) : 0
+    };
+  });
+
+  // 4) 兼类（同时命中多个分类）与未归类
+  const multi = rows.filter(r => r.hits.length > 1);
+  const none = rows.filter(r => r.hits.length === 0);
+
+  // 5) 必含项检查：在「全文 + 该类条目」范围内找关键词
+  const fullText = norm(text);
+  const checks = CHECKLIST.map(item => {
+    const found = item.keys.filter(k => fullText.indexOf(norm(k)) !== -1);
+    return { ...item, found, ok: found.length > 0 };
+  });
+
+  return { lines, total:rows.length, rows, cats, multi, none, checks };
+}
+
+/** 只算不渲染，用于导出报告时取最新结果 */
+function analyzeNow(text){
+  lastRes = analyze(text);
+  lastText = text;
+  return lastRes;
+}
+
+/* ==========================================================================
+   D. 渲染：结果区
+   ========================================================================== */
+const el = id => document.getElementById(id);
+let lastRes = null;      // 最近一次分析结果，导出报告时复用
+let lastText = '';       // 该结果对应的原文，用来判断是否已过期
+
+/** 取当前可用结果：若清单改过就重新分析，避免导出过期报告 */
+function currentRes(){
+  const text = el('input').value;
+  if (!lastRes || lastText !== text) analyzeNow(text);
+  return lastRes;
+}
+
+/** 渲染整个结果区 */
+function render(res){
+  lastRes = res;                 // 供「复制/下载报告」使用
+  lastText = el('input').value;
+  renderStats(res);
+  renderAlert(res);
+  renderTable(res);
+  renderExtra(res);
+  renderChecklist(res);
+  el('results').style.display = '';
+}
+
+/** 顶部统计卡片 */
+function renderStats(res){
+  const missing = res.checks.filter(c => !c.ok);
+
+  el('stats').innerHTML = `
+    <div class="stat"><div class="stat__num">${res.total}</div><div class="stat__label">有效条目</div></div>
+    <div class="stat"><div class="stat__num">${res.cats.filter(c => c.count > 0).length}<span style="font-size:15px;color:var(--muted);">/${CATEGORIES.length}</span></div><div class="stat__label">已覆盖专业分类</div></div>
+    <div class="stat ${res.none.length ? 'stat--warn' : ''}"><div class="stat__num">${res.none.length}</div><div class="stat__label">未识别条目</div></div>
+    <div class="stat ${missing.length ? 'stat--warn' : 'stat--ok'}"><div class="stat__num">${missing.length}</div><div class="stat__label">疑似缺失必含项</div></div>`;
+}
+
+/** 缺失警示横幅 */
+function renderAlert(res){
+  const missing = res.checks.filter(c => !c.ok);
+  const box = el('alertBox');
+  if (!res.total){ box.innerHTML = ''; return; }
+
+  if (!missing.length){
+    box.innerHTML = `<div class="alert alert--ok"><span class="alert__icon">✓</span>
+      <div>本轮初筛<b>未发现明显缺项</b>。清单覆盖比较完整，仍建议对照招标文件技术标要求再确认一遍。</div></div>`;
+    return;
+  }
+
+  // 找出「已有条目但仍缺项」的专业，这类最值得警惕
+  const risky = CATEGORIES
+    .filter(c => res.cats.some(x => x.id === c.id && x.count > 0) && missing.some(m => m.cat === c.id))
+    .map(c => ({ name:c.name, miss:missing.filter(m => m.cat === c.id).length }));
+
+  const riskyHtml = risky.length
+    ? `<div style="margin-top:6px;">其中 <b>${risky.map(r => `${r.name}（缺 ${r.miss} 项）`).join('、')}</b> 已出现部分条目却仍有缺口，最可能是漏项。</div>`
+    : '';
+
+  box.innerHTML = `<div class="alert alert--warn"><span class="alert__icon">⚠</span>
+    <div><div>检出 <b>${missing.length}</b> 项必含项<b>未在清单中检索到</b>，已在下方红色标出。</div>${riskyHtml}</div></div>`;
+}
+
+/** 分类明细表 */
+function renderTable(res){
+  const body = el('catBody');
+  const max = Math.max(1, ...res.cats.map(c => c.count));
+
+  body.innerHTML = res.cats.map(c => {
+    const sampleHtml = c.count === 0
+      ? '<span class="empty">— 本次清单未出现此类条目 —</span>'
+      : `<ul class="sample">${c.items.slice(0, 3).map(i => `<li>${esc(i.no)}. ${esc(i.text)}</li>`).join('')}</ul>`;
+    const more = c.count > 3
+      ? `<button class="more-btn" type="button" data-cat="${c.id}">查看全部 ${c.count} 条</button>`
+      : '';
+    return `<tr>
+      <td class="cat-name">${c.name}</td>
+      <td>
+        <span class="num">${c.count}</span>
+        <span style="color:var(--muted);font-size:13px;"> 条 · ${c.ratio}%</span>
+        <div class="bar"><div class="bar__fill" style="width:${Math.round(c.count / max * 100)}%"></div></div>
+      </td>
+      <td>${sampleHtml}${more}</td>
+    </tr>`;
+  }).join('');
+
+  // 「查看全部」展开：把该类条目补全到单元格里
+  body.querySelectorAll('.more-btn').forEach(btn => {
+    btn.addEventListener('click', function(){
+      const c = res.cats.find(x => x.id === btn.dataset.cat);
+      btn.closest('td').innerHTML = `<ul class="sample">${c.items.map(i => `<li>${i.no}. ${esc(i.text)}</li>`).join('')}</ul>`;
+    });
+  });
+}
+
+/** 兼类与未归类 */
+function renderExtra(res){
+  const multiBox = el('multiBox'), noneBox = el('noneBox');
+
+  multiBox.hidden = !res.multi.length;
+  if (res.multi.length){
+    el('multiTitle').textContent = `同时命中多个分类的条目（${res.multi.length} 条）`;
+    el('multiList').innerHTML = res.multi.map(r => {
+      const names = r.hits.map(h => CATEGORIES.find(c => c.id === h.id).name).join(' / ');
+      return `<li><b>${r.no}.</b> ${esc(r.text)} <span style="color:var(--navy-300)">→ ${names}</span></li>`;
+    }).join('');
+  }
+
+  noneBox.hidden = !res.none.length;
+  if (res.none.length){
+    el('noneTitle').textContent = `未识别（未命中任何关键词，${res.none.length} 条）—— 建议补充关键词或人工归类`;
+    el('noneList').innerHTML = res.none.map(r => `<li><b>${r.no}.</b> ${esc(r.text)}</li>`).join('');
+  }
+}
+
+/** 必含项检查清单（按专业分组） */
+function renderChecklist(res){
+  const box = el('checkList');
+  box.innerHTML = CATEGORIES.map(c => {
+    const items = res.checks.filter(x => x.cat === c.id);
+    if (!items.length) return '';
+    const miss = items.filter(i => !i.ok).length;
+    const badge = miss
+      ? `<span class="chk-count" style="color:var(--red);">缺 ${miss}</span>`
+      : `<span class="chk-count" style="color:var(--green);">全部命中</span>`;
+    return `<div class="chk-group">
+      <div class="chk-group__head">${c.name}${badge}</div>
+      <div class="chk-list">${items.map(itemHtml).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+/** 单个检查项 */
+function itemHtml(item){
+  if (item.ok){
+    return `<div class="chk chk--ok">
+      <span class="chk__mark">✓</span>
+      <div class="chk__body">
+        <div class="chk__name">${esc(item.name)}</div>
+        <div class="chk__hit">命中关键词：${item.found.map(k => `<code>${esc(k)}</code>`).join(' ')}</div>
+      </div>
+    </div>`;
+  }
+  return `<div class="chk chk--miss">
+    <span class="chk__mark">!</span>
+    <div class="chk__body">
+      <div class="chk__name">${esc(item.name)}</div>
+      <div class="chk__hint">${esc(item.hint || '')}</div>
+    </div>
+  </div>`;
+}
+
+/** HTML 转义，防止条目里的尖括号破坏页面 */
+function esc(s){
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ==========================================================================
+   E. 报告导出（复制 / 下载 / 打印）
+   ========================================================================== */
+function buildReport(res){
+  const L = [];
+  L.push('工程投标自查分析报告');
+  L.push('生成时间：' + new Date().toLocaleString('zh-CN'));
+  L.push('—'.repeat(34));
+  L.push(`有效条目：${res.total} 条｜已覆盖分类：${res.cats.filter(c=>c.count>0).length}/${CATEGORIES.length}｜未识别：${res.none.length} 条`);
+  L.push('');
+  L.push('【一、分类汇总】');
+  res.cats.forEach(c => L.push(`  ${c.name}：${c.count} 条（${c.ratio}%）`));
+  L.push('');
+  L.push('【二、疑似缺失的必含项】');
+  const miss = res.checks.filter(x => !x.ok);
+  if (!miss.length) L.push('  未发现明显缺项。');
+  miss.forEach(m => {
+    const name = (CATEGORIES.find(c => c.id === m.cat) || {}).name || m.cat;
+    L.push(`  ✗ [${name}] ${m.name} —— ${m.hint || ''}`);
+  });
+  L.push('');
+  L.push('【三、未识别条目】');
+  if (!res.none.length) L.push('  无');
+  res.none.forEach(r => L.push(`  ${r.no}. ${r.text}`));
+  L.push('');
+  L.push('说明：本报告由关键词初筛生成，仅供自查提示，请对照招标文件与图纸人工复核。');
+  return L.join('\n');
+}
+
+/* ==========================================================================
+   F. 关键词设置区渲染
+   ========================================================================== */
+function renderKwGrid(){
+  el('kwGrid').innerHTML = CATEGORIES.map(c => `
+    <div class="kw-item">
+      <label for="kw_${c.id}">${c.name}</label>
+      <input type="text" id="kw_${c.id}" data-cat="${c.id}" value="${esc(catKeywords(c.id).join('、'))}">
+    </div>`).join('');
+}
+
+/* ==========================================================================
+   G. 事件绑定
+   ========================================================================== */
+function updateCounter(){
+  const n = el('input').value.split(/\r?\n/).filter(s => s.trim()).length;
+  el('counter').textContent = n + ' 条';
+}
+
+function doRun(){
+  const text = el('input').value;
+  if (!text.trim()){ alert('请先粘贴清单内容。'); return; }
+  render(analyze(text));
+  updateCounter();
+}
+
+function init(){
+  loadKeywords();
+  renderKwGrid();
+
+  // 恢复上次草稿
+  try{ el('input').value = localStorage.getItem(LS_TEXT) || ''; }catch(e){}
+  updateCounter();
+  if (el('input').value.trim()) doRun();
+
+  // —— 输入框：自动保存草稿 + 更新计数 ——
+  let saveTimer = null;
+  el('input').addEventListener('input', function(){
+    updateCounter();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try{ localStorage.setItem(LS_TEXT, el('input').value); }catch(e){}
+    }, 400);
+  });
+
+  el('btnRun').addEventListener('click', doRun);
+
+  // Ctrl/Cmd + Enter 快速分析
+  el('input').addEventListener('keydown', function(e){
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') doRun();
+  });
+
+  el('btnSample').addEventListener('click', function(){
+    el('input').value = SAMPLE;
+    updateCounter(); doRun();
+  });
+
+  el('btnClear').addEventListener('click', function(){
+    if (!el('input').value.trim() || confirm('确定清空清单内容？')){
+      el('input').value = '';
+      el('results').style.display = 'none';
+      updateCounter();
+      try{ localStorage.removeItem(LS_TEXT); }catch(e){}
+    }
+  });
+
+  // 导入 txt / csv（用 FileReader 纯前端读取，不上传）
+  el('btnImport').addEventListener('click', () => el('fileInput').click());
+  el('fileInput').addEventListener('change', function(e){
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(){
+      el('input').value = String(reader.result || '');
+      updateCounter(); doRun();
+      e.target.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+
+  // 导出：优先用最近一次结果，没有或清单已改动就重新算
+  el('btnCopy').addEventListener('click', function(){
+    const report = buildReport(currentRes());
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(report)
+        .then(() => alert('报告已复制到剪贴板。'))
+        .catch(() => alert('复制失败，请手动选择文本。'));
+    } else {
+      alert('当前环境不支持一键复制，请用「下载报告」。');
+    }
+  });
+
+  el('btnDownload').addEventListener('click', function(){
+    const report = buildReport(currentRes());
+    const blob = new Blob([report], { type:'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '投标自查报告_' + new Date().toISOString().slice(0,10) + '.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  el('btnPrint').addEventListener('click', () => window.print());
+
+  // 关键词保存 / 重置
+  el('btnSaveKw').addEventListener('click', function(){
+    CATEGORIES.forEach(c => {
+      const input = el('kw_' + c.id);
+      keywords[c.id] = input.value.split(/[、,，\s]+/).map(s => s.trim()).filter(Boolean);
+    });
+    saveKeywords();
+    if (el('input').value.trim()) doRun();
+    alert('关键词已保存，分析结果已更新。');
+  });
+
+  el('btnResetKw').addEventListener('click', function(){
+    if (confirm('恢复为内置默认关键词？')){
+      resetKeywords(true);
+      if (el('input').value.trim()) doRun();
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
